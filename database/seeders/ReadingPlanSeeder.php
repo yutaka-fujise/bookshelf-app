@@ -39,7 +39,7 @@ class ReadingPlanSeeder extends Seeder
                 'user_id' => $yamada->id,
                 'book_id' => $books[2]->id,
                 'target_date' => Carbon::today()->subDays(3),
-                'status' => 'in_progress',
+                'status' => 'expired',
                 'completed_at' => null,
             ],
             [
