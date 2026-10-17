@@ -52,3 +52,11 @@ Route::post('/books', [BookController::class, 'store'])
 Route::post('/books/{book}/favorite', [\App\Http\Controllers\FavoriteController::class, 'toggle'])
     ->middleware('auth')
     ->name('favorites.toggle');
+
+Route::post('/books/{book}/reviews', [\App\Http\Controllers\ReviewController::class, 'store'])
+    ->middleware('auth')
+    ->name('reviews.store');
+
+Route::post('/reviews/{review}/like', [\App\Http\Controllers\ReviewController::class, 'like'])
+    ->middleware('auth')
+    ->name('reviews.like');
