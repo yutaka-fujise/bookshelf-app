@@ -28,7 +28,7 @@ class LoginTest extends TestCase
         ]);
 
         $this->assertAuthenticatedAs($user);
-        $response->assertRedirect(route('books.index'));
+        $response->assertRedirect('/');
     }
 
     public function test_user_cannot_login_with_invalid_password(): void
@@ -70,6 +70,6 @@ class LoginTest extends TestCase
 
         $this->assertGuest();
 
-        $response->assertRedirect(route('books.index'));
+        $response->assertRedirect('/login');
     }
 }
