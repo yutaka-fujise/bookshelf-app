@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\BookController;
+use App\Http\Controllers\ReviewController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -49,3 +50,9 @@ Route::delete('/books/{book}', [BookController::class, 'destroy'])->middleware('
 Route::post('/reviews/{review}/like', [\App\Http\Controllers\ReviewController::class, 'like'])
     ->middleware('auth')
     ->name('reviews.like');
+
+Route::put('/reviews/{review}', [ReviewController::class, 'update'])->middleware('auth')->name('reviews.update');
+
+Route::get('/reviews/{review}/edit', [ReviewController::class, 'edit'])->middleware('auth')->name('reviews.edit');
+
+Route::delete('/reviews/{review}', [ReviewController::class, 'destroy'])->middleware('auth')->name('reviews.destroy');
