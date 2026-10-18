@@ -5,20 +5,22 @@
         </h2>
     </x-slot>
 
-    <div class="py-6">
+    <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between mb-4">
-                <form method="GET" action="{{ route('reading-plans.index') }}"
-                      class="flex items-center gap-2">
-                    <label for="status" class="text-sm text-gray-600">
+            <div class="mb-4 flex justify-between items-center">
+                <form method="GET"
+                      action="{{ route('reading-plans.index') }}"
+                      class="flex items-center space-x-2">
+
+                    <label for="status" class="text-sm text-gray-700">
                         状態:
                     </label>
-                    <select id="status" name="status"
+
+                    <select name="status"
+                            id="status"
                             onchange="this.form.submit()"
-                            class="rounded-md border-gray-300 text-sm">
-                        <option value="" @selected(request('status') === null || request('status') === '')>
-                            すべて
-                        </option>
+                            class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                        <option value="">すべて</option>
                         <option value="in_progress" @selected(request('status') === 'in_progress')>
                             進行中
                         </option>
@@ -32,97 +34,130 @@
                 </form>
 
                 <a href="{{ route('reading-plans.create') }}"
-                   class="bg-blue-500 hover:bg-blue-600 text-white text-sm px-4 py-2 rounded">
+                   class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
                     新規計画作成
                 </a>
             </div>
 
             @if(session('success'))
-                <div class="bg-green-50 text-green-700 p-4 rounded mb-4">
+                <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
                     {{ session('success') }}
                 </div>
             @endif
 
-            @if($plans->isEmpty())
-                <div class="bg-white rounded-lg p-5 text-sm text-gray-500">
-                    該当する読書計画はありません。
-                </div>
-            @else
-                <div class="bg-white rounded-lg shadow-sm overflow-hidden">
-                    <table class="w-full text-sm">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="p-4 text-left">書籍名</th>
-                                <th class="p-4 text-left">目標日</th>
-                                <th class="p-4 text-left">状態</th>
-                                <th class="p-4 text-left">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($plans as $plan)
-                                <tr class="border-t">
-                                    <td class="p-4">
-                                        <a href="{{ route('books.show', $plan->book) }}"
-                                           class="text-blue-600 hover:underline">
-                                            {{ $plan->book->title }}
-                                        </a>
-                                    </td>
-                                    <td class="p-4">
-                                        {{ $plan->target_date->format('Y/m/d') }}
-                                    </td>
-                                    <td class="p-4">
-                                        @switch($plan->status)
-                                            @case('in_progress')
-                                                進行中
-                                                @break
-                                            @case('expired')
-                                                期限切れ
-                                                @break
-                                            @case('completed')
-                                                読了済み
-                                                @break
-                                        @endswitch
-                                    </td>
-                                    <td class="p-4">
-                                        <div class="flex items-center gap-3">
-                                            @if($plan->status !== 'completed')
-                                                <a href="{{ route('reading-plans.edit', $plan) }}"
-                                                   class="text-blue-600 hover:underline">
-                                                    編集
-                                                </a>
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                <div class="p-6 text-gray-900">
+                    @if($plans->isEmpty())
+                        <p class="text-gray-500">
+                            該当する読書計画はありません。
+                        </p>
+                    @else
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            書籍
+                                        </th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            期日
+                                        </th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            完了日
+                                        </th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            状態
+                                        </th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            操作
+                                        </th>
+                                    </tr>
+                                </thead>
 
-                                                <form method="POST"
-                                                      action="{{ route('reading-plans.complete', $plan) }}"
-                                                      onsubmit="return confirm('この読書計画を読了済みにしますか？');">
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    @foreach($plans as $plan)
+                                        <tr>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <a href="{{ route('books.show', $plan->book) }}"
+                                                   class="text-blue-600 hover:text-blue-800">
+                                                    {{ $plan->book->title }}
+                                                </a>
+                                            </td>
+
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                                {{ $plan->target_date->format('Y-m-d') }}
+                                            </td>
+
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                {{ $plan->completed_at?->format('Y-m-d') ?? '-' }}
+                                            </td>
+
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                                @switch($plan->status)
+                                                    @case('in_progress')
+                                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                            進行中
+                                                        </span>
+                                                        @break
+
+                                                    @case('expired')
+                                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                                            期限切れ
+                                                        </span>
+                                                        @break
+
+                                                    @case('completed')
+                                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                            読了済み
+                                                        </span>
+                                                        @break
+                                                @endswitch
+                                            </td>
+
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
+                                                @if($plan->status !== 'completed')
+                                                    <form action="{{ route('reading-plans.complete', $plan) }}"
+                                                          method="POST"
+                                                          class="inline"
+                                                          onsubmit="return confirm('この読書計画を読了済みにしますか？');">
+                                                        @csrf
+                                                        @method('PATCH')
+
+                                                        <button type="submit"
+                                                                class="text-green-600 hover:text-green-900">
+                                                            読了する
+                                                        </button>
+                                                    </form>
+
+                                                    <a href="{{ route('reading-plans.edit', $plan) }}"
+                                                       class="text-indigo-600 hover:text-indigo-900">
+                                                        編集
+                                                    </a>
+                                                @endif
+
+                                                <form action="{{ route('reading-plans.destroy', $plan) }}"
+                                                      method="POST"
+                                                      class="inline"
+                                                      onsubmit="return confirm('本当に削除しますか？');">
                                                     @csrf
-                                                    @method('PATCH')
+                                                    @method('DELETE')
 
                                                     <button type="submit"
-                                                            class="text-green-600 hover:underline">
-                                                        読了
+                                                            class="text-red-600 hover:text-red-900">
+                                                        削除
                                                     </button>
                                                 </form>
-                                            @endif
-
-                                            <form method="POST"
-                                                  action="{{ route('reading-plans.destroy', $plan) }}"
-                                                  onsubmit="return confirm('この読書計画を削除しますか？');">
-                                                @csrf
-                                                @method('DELETE')
-
-                                                <button type="submit"
-                                                        class="text-red-600 hover:underline">
-                                                    削除
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
                 </div>
+            </div>
 
+            @if($plans->hasPages())
                 <div class="mt-4">
                     {{ $plans->links() }}
                 </div>
