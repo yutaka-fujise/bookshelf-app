@@ -17,4 +17,12 @@ class BookIndexTest extends TestCase
 
         $response->assertStatus(200);
     }
+
+    public function test_guest_can_view_book_index_at_home(): void
+    {
+        $response = $this->get('/');
+
+        $response->assertOk();
+        $response->assertViewIs('books.index');
+    }
 }
