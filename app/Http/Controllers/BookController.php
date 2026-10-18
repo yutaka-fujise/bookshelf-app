@@ -57,4 +57,56 @@ class BookController extends Controller
             ->route('books.show', $book)
             ->with('success', '書籍を登録しました。');
     }
+
+    public function update(
+        \App\Http\Requests\UpdateBookRequest $request,
+        Book $book
+    ) {
+        $validated = $request->validated();
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($book, $validated) {
+            $book->update([
+                'title' => $validated['title'],
+                'author' => $validated['author'],
+                'isbn13' => $validated['isbn'],
+                'published_at' => $validated['published_date'],
+                'description' => $validated['description'] ?? null,
+                'image_url' => $validated['image_url'] ?? null,
+            ]);
+
+            $book->genres()->sync($validated['genres']);
+        });
+
+        return redirect()
+            ->route('books.show', $book)
+            ->with('success', '書籍を更新しました。');
+    }
+
+    public function edit(Book $book)
+    {
+        abort_unless(
+            auth()->id() === $book->user_id,
+            403
+        );
+
+        $book->load('genres');
+
+        $genres = \App\Models\Genre::orderBy('id')->get();
+
+        return view('books.edit', compact('book', 'genres'));
+    }
+
+    public function destroy(Book $book)
+    {
+        abort_unless(
+            auth()->id() === $book->user_id,
+            403
+        );
+
+        $book->delete();
+
+        return redirect()
+            ->route('books.index')
+            ->with('success', '書籍を削除しました。');
+    }
 }

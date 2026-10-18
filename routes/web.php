@@ -28,9 +28,13 @@ Route::get('/books/create', [BookController::class, 'create'])
 Route::get('/books/{book}', [BookController::class, 'show'])
     ->name('books.show');
 
+Route::put('/books/{book}', [BookController::class, 'update'])->middleware('auth')->name('books.update');
+
 Route::post('/books', [BookController::class, 'store'])
     ->middleware('auth')
     ->name('books.store');
+
+Route::get('/books/{book}/edit', [BookController::class, 'edit'])->middleware('auth')->name('books.edit');
 
 Route::post('/books/{book}/favorite', [\App\Http\Controllers\FavoriteController::class, 'toggle'])
     ->middleware('auth')
@@ -39,6 +43,8 @@ Route::post('/books/{book}/favorite', [\App\Http\Controllers\FavoriteController:
 Route::post('/books/{book}/reviews', [\App\Http\Controllers\ReviewController::class, 'store'])
     ->middleware('auth')
     ->name('reviews.store');
+
+Route::delete('/books/{book}', [BookController::class, 'destroy'])->middleware('auth')->name('books.destroy');
 
 Route::post('/reviews/{review}/like', [\App\Http\Controllers\ReviewController::class, 'like'])
     ->middleware('auth')
