@@ -6,6 +6,7 @@ use App\Http\Controllers\GenreController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\RankingController;
 use App\Http\Controllers\ReadingPlanController;
+use App\Http\Controllers\ReadingReportController;
 use App\Http\Controllers\ReviewController;
 use Illuminate\Support\Facades\Route;
 
@@ -156,3 +157,9 @@ Route::post('/notifications/{notification}/read', [NotificationController::class
 
 Route::get('/ranking', [RankingController::class, 'index'])
     ->name('ranking.index');
+
+// マイ読書レポート（Reading Report）
+
+Route::get('/reports', [ReadingReportController::class, 'index'])
+    ->middleware('auth')
+    ->name('reports.index');
