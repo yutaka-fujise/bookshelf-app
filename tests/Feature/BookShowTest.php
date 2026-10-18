@@ -100,4 +100,47 @@ class BookShowTest extends TestCase
         $response->assertSee('ログイン時レビュー表示テスト');
         $response->assertSee('いいね (0)');
     }
+
+    // 作成者本人には書籍の編集・削除ボタンが表示される
+    public function test_owner_can_see_edit_and_delete_buttons(): void
+    {
+        $owner = User::factory()->create();
+
+        $book = Book::create([
+            'user_id' => $owner->id,
+            'title' => '本人の書籍',
+            'author' => 'テスト著者',
+            'isbn13' => '9784000000020',
+            'published_at' => '2026-10-14',
+        ]);
+
+        $response = $this->actingAs($owner)
+            ->get(route('books.show', $book));
+
+        $response->assertOk();
+        $response->assertSee(route('books.edit', $book), false);
+        $response->assertSee(route('books.destroy', $book), false);
+    }
+
+    // 他のユーザーには書籍の編集・削除ボタンが表示されない
+    public function test_other_user_cannot_see_edit_and_delete_buttons(): void
+    {
+        $owner = User::factory()->create();
+        $otherUser = User::factory()->create();
+
+        $book = Book::create([
+            'user_id' => $owner->id,
+            'title' => '他人の書籍',
+            'author' => 'テスト著者',
+            'isbn13' => '9784000000021',
+            'published_at' => '2026-10-14',
+        ]);
+
+        $response = $this->actingAs($otherUser)
+            ->get(route('books.show', $book));
+
+        $response->assertOk();
+        $response->assertDontSee(route('books.edit', $book), false);
+        $response->assertDontSee('本当に削除しますか？');
+    }
 }
