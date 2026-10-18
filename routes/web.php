@@ -7,6 +7,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ReadingPlanController;
 use App\Http\Controllers\ReviewController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\RankingController;
 
 /*
 |--------------------------------------------------------------------------
@@ -150,3 +151,6 @@ Route::get('/notifications', [NotificationController::class, 'index'])
 Route::post('/notifications/{notification}/read', [NotificationController::class, 'read'])
     ->middleware('auth')
     ->name('notifications.read');
+
+Route::get('/ranking', [RankingController::class, 'index'])
+    ->name('ranking.index');
