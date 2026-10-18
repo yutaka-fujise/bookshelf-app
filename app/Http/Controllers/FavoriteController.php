@@ -22,4 +22,14 @@ class FavoriteController extends Controller
 
         return redirect()->route('books.show', $book);
     }
+
+    public function index(Request $request)
+    {
+        $books = $request->user()
+            ->favoriteBooks()
+            ->orderBy('books.id', 'desc')
+            ->paginate(12);
+
+        return view('favorites.index', compact('books'));
+    }
 }
