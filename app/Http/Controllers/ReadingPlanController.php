@@ -140,4 +140,26 @@ class ReadingPlanController extends Controller
             ->route('reading-plans.index')
             ->with('success', '読書計画を削除しました。');
     }
+
+    public function complete(\App\Models\ReadingPlan $readingPlan)
+    {
+        // 所有者以外は読了処理を実行できない
+        abort_unless(
+            $readingPlan->user_id === auth()->id(),
+            403
+        );
+
+        // 読了済みの計画は再度読了できない
+        abort_if($readingPlan->status === 'completed', 403);
+
+        // 読了状態と読了日時を記録する
+        $readingPlan->update([
+            'status' => 'completed',
+            'completed_at' => now(),
+        ]);
+
+        return redirect()
+            ->route('reading-plans.index')
+            ->with('success', '読書計画を読了済みにしました。');
+    }
 }

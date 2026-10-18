@@ -1,4 +1,3 @@
-
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
@@ -91,6 +90,18 @@
                                                    class="text-blue-600 hover:underline">
                                                     編集
                                                 </a>
+
+                                                <form method="POST"
+                                                      action="{{ route('reading-plans.complete', $plan) }}"
+                                                      onsubmit="return confirm('この読書計画を読了済みにしますか？');">
+                                                    @csrf
+                                                    @method('PATCH')
+
+                                                    <button type="submit"
+                                                            class="text-green-600 hover:underline">
+                                                        読了
+                                                    </button>
+                                                </form>
                                             @endif
 
                                             <form method="POST"
