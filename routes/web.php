@@ -36,6 +36,11 @@ Route::post('/books', [BookController::class, 'store'])
     ->middleware('auth')
     ->name('books.store');
 
+Route::get('/books/isbn/{isbn}', [BookController::class, 'searchByIsbn'])
+    ->middleware('auth')
+    ->where('isbn', '[0-9]{13}')
+    ->name('books.isbn.search');
+
 Route::get('/books/{book}', [BookController::class, 'show'])
     ->name('books.show');
 
