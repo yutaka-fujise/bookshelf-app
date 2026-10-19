@@ -10,9 +10,39 @@ class BookController extends Controller
     {
         $books = Book::with('genres')
             ->withAvg('reviews', 'rating')
-            ->paginate(10);
+            ->when(request('keyword'), function ($query, $keyword) {
+                $query->where(function ($query) use ($keyword) {
+                    $query->where('title', 'like', "%{$keyword}%")
+                        ->orWhere('author', 'like', "%{$keyword}%");
+                });
+            })
+            ->when(request('genre'), function ($query, $genre) {
+                $query->whereHas('genres', function ($query) use ($genre) {
+                    $query->where('genres.id', $genre);
+                });
+            })
+            ->when(request('sort', 'newest') === 'newest', function ($query) {
+                $query->orderByDesc('created_at')
+                    ->orderByDesc('id');
+            })
+            ->when(request('sort') === 'oldest', function ($query) {
+                $query->orderBy('created_at')
+                    ->orderBy('id');
+            })
+            ->when(request('sort') === 'rating', function ($query) {
+                $query->orderByDesc('reviews_avg_rating')
+                    ->orderBy('id');
+            })
+            ->when(request('sort') === 'title', function ($query) {
+                $query->orderBy('title')
+                    ->orderBy('id');
+            })
+            ->paginate(10)
+            ->withQueryString();
 
-        return view('books.index', compact('books'));
+        $genres = \App\Models\Genre::orderBy('id')->get();
+
+        return view('books.index', compact('books', 'genres'));
     }
 
     public function show(Book $book)
