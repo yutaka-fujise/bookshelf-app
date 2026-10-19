@@ -6,6 +6,73 @@ use App\Models\Book;
 
 class BookController extends Controller
 {
+    public function searchByIsbn(string $isbn)
+    {
+        $response = \Illuminate\Support\Facades\Http::get(
+            'https://www.googleapis.com/books/v1/volumes',
+            [
+                'q' => 'isbn:' . $isbn,
+                'key' => config('services.google_books.key'),
+            ]
+        );
+
+        if ($response->failed()) {
+            return response()->json([
+                'error' => '書籍情報の取得に失敗しました。',
+            ], 502);
+        }
+
+        $book = $response->json('items.0.volumeInfo');
+
+        if (!$book) {
+            $openLibraryResponse = \Illuminate\Support\Facades\Http::timeout(15)
+                ->get("https://openlibrary.org/isbn/{$isbn}.json");
+
+            if ($openLibraryResponse->successful()) {
+                $openLibraryBook = $openLibraryResponse->json();
+
+                $author = '';
+
+                if (!empty($openLibraryBook['authors'][0]['key'])) {
+                    $authorResponse = \Illuminate\Support\Facades\Http::timeout(15)
+                        ->get('https://openlibrary.org' . $openLibraryBook['authors'][0]['key'] . '.json');
+
+                    if ($authorResponse->successful()) {
+                        $author = $authorResponse->json('name') ?? '';
+                    }
+                }
+
+                $description = $openLibraryBook['description'] ?? '';
+
+                if (is_array($description)) {
+                    $description = $description['value'] ?? '';
+                }
+
+                return response()->json([
+                    'title' => $openLibraryBook['title'] ?? '',
+                    'author' => $author,
+                    'description' => $description,
+                    'published_date' => $openLibraryBook['publish_date'] ?? '',
+                    'image_url' => !empty($openLibraryBook['covers'][0])
+                        ? 'https://covers.openlibrary.org/b/id/' . $openLibraryBook['covers'][0] . '-M.jpg'
+                        : '',
+                ]);
+            }
+
+            return response()->json([
+                'error' => '書籍が見つかりませんでした。',
+            ], 404);
+        }
+
+        return response()->json([
+            'title' => $book['title'] ?? '',
+            'author' => implode(', ', $book['authors'] ?? []),
+            'description' => $book['description'] ?? '',
+            'published_date' => $book['publishedDate'] ?? '',
+            'image_url' => $book['imageLinks']['thumbnail'] ?? '',
+        ]);
+    }
+
     public function index()
     {
         $books = Book::with('genres')
