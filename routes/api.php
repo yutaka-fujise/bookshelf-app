@@ -27,3 +27,6 @@ Route::post('/v1/books', [\App\Http\Controllers\Api\V1\BookController::class, 's
 
 Route::put('/v1/books/{book}', [\App\Http\Controllers\Api\V1\BookController::class, 'update'])
     ->middleware('auth:sanctum');
+
+Route::delete('/v1/books/{book}', [\App\Http\Controllers\Api\V1\BookController::class, 'destroy'])
+    ->middleware('auth:sanctum');

@@ -429,4 +429,80 @@ class BookApiTest extends TestCase
             'isbn13' => '9784000001001',
         ]);
     }
+
+    public function test_book_owner_can_delete_book(): void
+    {
+        $user = \App\Models\User::factory()->create();
+
+        $book = \App\Models\Book::create([
+            'user_id' => $user->id,
+            'title' => 'API削除テスト書籍',
+            'author' => 'テスト著者',
+            'isbn13' => '9784000001100',
+            'published_at' => '2026-10-21',
+        ]);
+
+        $response = $this->actingAs($user)
+            ->deleteJson("/api/v1/books/{$book->id}");
+
+        $response->assertNoContent();
+
+        $this->assertDatabaseMissing('books', [
+            'id' => $book->id,
+        ]);
+    }
+
+    public function test_guest_cannot_delete_book_via_api(): void
+    {
+        $book = \App\Models\Book::create([
+            'title' => '未認証削除テスト書籍',
+            'author' => 'テスト著者',
+            'isbn13' => '9784000001200',
+            'published_at' => '2026-10-21',
+        ]);
+
+        $response = $this->deleteJson("/api/v1/books/{$book->id}");
+
+        $response->assertUnauthorized();
+
+        $this->assertDatabaseHas('books', [
+            'id' => $book->id,
+            'title' => '未認証削除テスト書籍',
+        ]);
+    }
+
+    public function test_other_user_cannot_delete_book_via_api(): void
+    {
+        $owner = \App\Models\User::factory()->create();
+        $otherUser = \App\Models\User::factory()->create();
+
+        $book = \App\Models\Book::create([
+            'user_id' => $owner->id,
+            'title' => '所有者の削除対象書籍',
+            'author' => 'テスト著者',
+            'isbn13' => '9784000001300',
+            'published_at' => '2026-10-21',
+        ]);
+
+        $response = $this->actingAs($otherUser)
+            ->deleteJson("/api/v1/books/{$book->id}");
+
+        $response->assertForbidden();
+
+        $this->assertDatabaseHas('books', [
+            'id' => $book->id,
+            'user_id' => $owner->id,
+            'title' => '所有者の削除対象書籍',
+        ]);
+    }
+
+    public function test_deleting_nonexistent_book_returns_404(): void
+    {
+        $user = \App\Models\User::factory()->create();
+
+        $response = $this->actingAs($user)
+            ->deleteJson('/api/v1/books/999999');
+
+        $response->assertNotFound();
+    }
 }
