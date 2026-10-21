@@ -3,75 +3,110 @@
 namespace App\Http\Controllers;
 
 use App\Models\Book;
+use Illuminate\Support\Facades\Http;
 
 class BookController extends Controller
 {
     public function searchByIsbn(string $isbn)
     {
-        $response = \Illuminate\Support\Facades\Http::get(
-            'https://www.googleapis.com/books/v1/volumes',
-            [
-                'q' => 'isbn:' . $isbn,
-                'key' => config('services.google_books.key'),
-            ]
-        );
+        // Google Books APIから書籍情報を取得
+        try {
+            $response = Http::timeout(15)->get(
+                'https://www.googleapis.com/books/v1/volumes',
+                [
+                    'q' => 'isbn:' . $isbn,
+                    'key' => config('services.google_books.key'),
+                ]
+            );
 
-        if ($response->failed()) {
-            return response()->json([
-                'error' => '書籍情報の取得に失敗しました。',
-            ], 502);
+            $googleBooksFailed = $response->failed();
+
+            $book = $googleBooksFailed
+                ? null
+                : $response->json('items.0.volumeInfo');
+
+            if ($book) {
+                return response()->json([
+                    'title' => $book['title'] ?? '',
+                    'author' => implode(', ', $book['authors'] ?? []),
+                    'description' => $book['description'] ?? '',
+                    'published_date' => $book['publishedDate'] ?? '',
+                    'image_url' => $book['imageLinks']['thumbnail'] ?? '',
+                    'categories' => $book['categories'] ?? [],
+                ]);
+            }
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            // Google Booksへの接続に失敗してもOpen Libraryを試す
+            $googleBooksFailed = true;
         }
 
-        $book = $response->json('items.0.volumeInfo');
-
-        if (!$book) {
-            $openLibraryResponse = \Illuminate\Support\Facades\Http::timeout(15)
+        // Google Booksで取得できなければOpen Libraryを試す
+        try {
+            $openLibraryResponse = Http::timeout(15)
                 ->get("https://openlibrary.org/isbn/{$isbn}.json");
 
             if ($openLibraryResponse->successful()) {
                 $openLibraryBook = $openLibraryResponse->json();
 
-                $author = '';
+                // 有効な書籍データが返された場合のみ採用する
+                if (
+                    is_array($openLibraryBook)
+                    && !empty($openLibraryBook['title'])
+                ) {
+                    $author = '';
 
-                if (!empty($openLibraryBook['authors'][0]['key'])) {
-                    $authorResponse = \Illuminate\Support\Facades\Http::timeout(15)
-                        ->get('https://openlibrary.org' . $openLibraryBook['authors'][0]['key'] . '.json');
+                    if (!empty($openLibraryBook['authors'][0]['key'])) {
+                        try {
+                            $authorResponse = Http::timeout(15)
+                                ->get(
+                                    'https://openlibrary.org'
+                                    . $openLibraryBook['authors'][0]['key']
+                                    . '.json'
+                                );
 
-                    if ($authorResponse->successful()) {
-                        $author = $authorResponse->json('name') ?? '';
+                            if ($authorResponse->successful()) {
+                                $author = $authorResponse->json('name') ?? '';
+                            }
+                        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+                            // 著者情報だけ取得できない場合は空欄にする
+                        }
                     }
+
+                    $description = $openLibraryBook['description'] ?? '';
+
+                    if (is_array($description)) {
+                        $description = $description['value'] ?? '';
+                    }
+
+                    return response()->json([
+                        'title' => $openLibraryBook['title'],
+                        'author' => $author,
+                        'description' => $description,
+                        'published_date' => $openLibraryBook['publish_date'] ?? '',
+                        'image_url' => !empty($openLibraryBook['covers'][0])
+                            ? 'https://covers.openlibrary.org/b/id/'
+                                . $openLibraryBook['covers'][0]
+                                . '-M.jpg'
+                            : '',
+                        'categories' => [],
+                    ]);
                 }
-
-                $description = $openLibraryBook['description'] ?? '';
-
-                if (is_array($description)) {
-                    $description = $description['value'] ?? '';
-                }
-
-                return response()->json([
-                    'title' => $openLibraryBook['title'] ?? '',
-                    'author' => $author,
-                    'description' => $description,
-                    'published_date' => $openLibraryBook['publish_date'] ?? '',
-                    'image_url' => !empty($openLibraryBook['covers'][0])
-                        ? 'https://covers.openlibrary.org/b/id/' . $openLibraryBook['covers'][0] . '-M.jpg'
-                        : '',
-                ]);
             }
-
-            return response()->json([
-                'error' => '書籍が見つかりませんでした。',
-            ], 404);
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            // Open Libraryへの接続にも失敗した場合は下でエラーを返す
         }
 
+        // Google Books自体が失敗し、代替取得も失敗した場合
+        if ($googleBooksFailed) {
+            return response()->json([
+                'error' => '書籍情報の取得に失敗しました。',
+            ], 502);
+        }
+
+        // Google Booksでは検索できたが、どちらにも書籍がない場合
         return response()->json([
-            'title' => $book['title'] ?? '',
-            'author' => implode(', ', $book['authors'] ?? []),
-            'description' => $book['description'] ?? '',
-            'published_date' => $book['publishedDate'] ?? '',
-            'image_url' => $book['imageLinks']['thumbnail'] ?? '',
-            'categories' => $book['categories'] ?? [],
-        ]);
+            'error' => '書籍が見つかりませんでした。',
+        ], 404);
     }
 
     public function index()

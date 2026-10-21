@@ -26,6 +26,7 @@ class BookIsbnSearchTest extends TestCase
                             'imageLinks' => [
                                 'thumbnail' => 'https://example.com/cover.jpg',
                             ],
+                            'categories' => ['プログラミング'],
                         ],
                     ],
                 ],
@@ -45,6 +46,7 @@ class BookIsbnSearchTest extends TestCase
             'description' => 'Laravelの入門書です。',
             'published_date' => '2025-04-01',
             'image_url' => 'https://example.com/cover.jpg',
+            'categories' => ['プログラミング'],
         ]);
 
         Http::assertSent(function ($request) {
@@ -83,13 +85,16 @@ class BookIsbnSearchTest extends TestCase
         ]);
     }
 
-    public function test_returns_502_when_google_books_api_fails(): void
+    public function test_returns_502_when_both_book_apis_fail(): void
     {
         Http::fake([
-            'www.googleapis.com/books/v1/volumes*' => Http::response(
-                ['error' => 'Service Unavailable'],
-                503
-            ),
+            'www.googleapis.com/books/v1/volumes*' => Http::response([
+                'error' => 'Service Unavailable',
+            ], 503),
+
+            'openlibrary.org/isbn/*' => Http::response([
+                'error' => 'Service Unavailable',
+            ], 503),
         ]);
 
         $user = User::factory()->create();
@@ -143,6 +148,33 @@ class BookIsbnSearchTest extends TestCase
             'description' => 'A young wizard attends Hogwarts.',
             'published_date' => '1999',
             'image_url' => 'https://covers.openlibrary.org/b/id/14656855-M.jpg',
+        ]);
+    }
+
+    public function test_fetches_from_open_library_when_google_books_api_fails(): void
+    {
+        Http::fake([
+            'www.googleapis.com/books/v1/volumes*' => Http::response([
+                'error' => 'Invalid API key',
+            ], 400),
+
+            'openlibrary.org/isbn/*' => Http::response([
+                'title' => '吾輩は猫である',
+                'description' => '夏目漱石の小説',
+            ], 200),
+        ]);
+
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)
+            ->getJson('/books/isbn/9784101010014');
+
+        $response->assertOk();
+
+        $response->assertJson([
+            'title' => '吾輩は猫である',
+            'description' => '夏目漱石の小説',
+            'categories' => [],
         ]);
     }
 }
