@@ -134,13 +134,13 @@ class BookUpdateTest extends TestCase
             ]);
 
         $response->assertRedirect(route('books.show', $book))
-            ->assertSessionHas('info', '変更はありませんでした。');
+            ->assertSessionHas('info', '変更内容がありません。');
 
         // 詳細画面にもメッセージが表示されることを確認
         $this->actingAs($user)
             ->get(route('books.show', $book))
             ->assertOk()
-            ->assertSee('変更はありませんでした。');
+            ->assertSee('変更内容がありません。');
 
         $this->assertDatabaseHas('books', [
             'id' => $book->id,

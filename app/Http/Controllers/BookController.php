@@ -184,7 +184,7 @@ class BookController extends Controller
         if (!$bookChanged && $currentGenres === $submittedGenres) {
             return redirect()
                 ->route('books.show', $book)
-                ->with('info', '変更はありませんでした。');
+                ->with('info', '変更内容がありません。');
         }
 
         \Illuminate\Support\Facades\DB::transaction(function () use ($book, $validated) {
