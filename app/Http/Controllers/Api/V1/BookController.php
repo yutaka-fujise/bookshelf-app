@@ -92,4 +92,45 @@ class BookController extends Controller
             ],
         ]);
     }
+
+    public function store(\App\Http\Requests\StoreBookRequest $request)
+    {
+        $validated = $request->validated();
+
+        $book = \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $request) {
+            $book = Book::create([
+                'user_id' => $request->user()->id,
+                'title' => $validated['title'],
+                'author' => $validated['author'],
+                'isbn13' => $validated['isbn'],
+                'published_at' => $validated['published_date'],
+                'description' => $validated['description'] ?? null,
+                'image_url' => $validated['image_url'] ?? null,
+            ]);
+
+            $book->genres()->sync($validated['genres']);
+
+            return $book;
+        });
+
+        $book->load('genres');
+
+        return response()->json([
+            'data' => [
+                'id' => $book->id,
+                'title' => $book->title,
+                'author' => $book->author,
+                'isbn13' => $book->isbn13,
+                'published_at' => $book->published_at,
+                'description' => $book->description,
+                'image_url' => $book->image_url,
+                'genres' => $book->genres->map(function ($genre) {
+                    return [
+                        'id' => $genre->id,
+                        'name' => $genre->name,
+                    ];
+                }),
+            ],
+        ], 201);
+    }
 }

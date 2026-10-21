@@ -153,4 +153,109 @@ class BookApiTest extends TestCase
         $response->assertUnprocessable()
             ->assertJsonValidationErrors(['keyword']);
     }
+
+    public function test_guest_cannot_store_book(): void
+    {
+        $response = $this->postJson('/api/v1/books', [
+            'title' => '未認証テスト書籍',
+            'author' => 'テスト著者',
+            'isbn' => '9784000000200',
+            'published_date' => '2026-10-21',
+            'genres' => [1],
+        ]);
+
+        $response->assertUnauthorized();
+    }
+
+    public function test_authenticated_user_can_store_book(): void
+    {
+        $user = \App\Models\User::factory()->create();
+
+        $genre = \App\Models\Genre::create([
+            'name' => 'API登録テストジャンル',
+        ]);
+
+        $response = $this->actingAs($user)->postJson('/api/v1/books', [
+            'title' => 'API登録テスト書籍',
+            'author' => 'テスト著者',
+            'isbn' => '9784000000300',
+            'published_date' => '2026-10-21',
+            'description' => 'API登録テスト',
+            'genres' => [$genre->id],
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.title', 'API登録テスト書籍')
+            ->assertJsonPath('data.genres.0.id', $genre->id);
+
+        $this->assertDatabaseHas('books', [
+            'user_id' => $user->id,
+            'title' => 'API登録テスト書籍',
+            'isbn13' => '9784000000300',
+        ]);
+
+        $this->assertDatabaseHas('book_genre', [
+            'book_id' => $response->json('data.id'),
+            'genre_id' => $genre->id,
+        ]);
+    }
+
+    public function test_book_store_requires_mandatory_fields(): void
+    {
+        $user = \App\Models\User::factory()->create();
+
+        $response = $this->actingAs($user)->postJson('/api/v1/books', []);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors([
+                'title',
+                'author',
+                'isbn',
+                'published_date',
+                'genres',
+            ]);
+    }
+
+    public function test_book_store_rejects_duplicate_isbn(): void
+    {
+        $user = \App\Models\User::factory()->create();
+
+        \App\Models\Book::create([
+            'title' => '登録済み書籍',
+            'author' => 'テスト著者',
+            'isbn13' => '9784000000400',
+            'published_at' => '2026-10-21',
+        ]);
+
+        $genre = \App\Models\Genre::create([
+            'name' => 'API重複テストジャンル',
+        ]);
+
+        $response = $this->actingAs($user)->postJson('/api/v1/books', [
+            'title' => '重複登録しようとする書籍',
+            'author' => 'テスト著者',
+            'isbn' => '9784000000400',
+            'published_date' => '2026-10-21',
+            'genres' => [$genre->id],
+        ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['isbn']);
+    }
+
+    public function test_book_store_rejects_nonexistent_genre(): void
+    {
+        $user = \App\Models\User::factory()->create();
+
+        $response = $this->actingAs($user)->postJson('/api/v1/books', [
+            'title' => 'ジャンル不正テスト書籍',
+            'author' => 'テスト著者',
+            'isbn' => '9784000000500',
+            'published_date' => '2026-10-21',
+            'genres' => [999999],
+        ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['genres.0']);
+    }
 }
