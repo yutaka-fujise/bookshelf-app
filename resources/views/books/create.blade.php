@@ -12,7 +12,7 @@
                 <div class="p-6">
                     <div class="flex items-center gap-2 mb-3">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.247 18 17.5 18s-3.332.477-4.5 1.253" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253" />
                         </svg>
                         <h3 class="font-semibold text-base text-gray-800">
                             ISBN から書籍情報を自動入力
@@ -117,36 +117,56 @@
                     return;
                 }
 
-                // 取得できた書籍情報をフォームへ反映
+                // 取得した書籍情報をフォームへ反映
                 document.getElementById('title').value = data.title ?? '';
                 document.getElementById('author').value = data.author ?? '';
                 document.getElementById('isbn').value = isbn;
                 document.getElementById('description').value = data.description ?? '';
                 document.getElementById('image_url').value = data.image_url ?? '';
 
-                // 出版日は取得できなければ空欄にする
+                // 出版日をYYYY-MM-DD形式に変換
+                // 日付が不明・不完全な場合は空欄にする
                 const publishedDateEl = document.getElementById('published_date');
                 publishedDateEl.value = '';
 
                 if (data.published_date) {
-                    const publishedDate = String(data.published_date);
+                    const publishedDate = String(data.published_date).trim();
+                    let normalizedDate = '';
 
                     // YYYY-MM-DD形式
                     if (/^\d{4}-\d{2}-\d{2}$/.test(publishedDate)) {
-                        const date = new Date(`${publishedDate}T00:00:00Z`);
+                        normalizedDate = publishedDate;
+                    }
+
+                    // Dec 26, 2003など、英語の月名を使った日付
+                    else if (
+                        /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2},?\s+\d{4}$/i.test(publishedDate)
+                    ) {
+                        const parsedDate = new Date(publishedDate);
+
+                        if (!Number.isNaN(parsedDate.getTime())) {
+                            normalizedDate = [
+                                parsedDate.getFullYear(),
+                                String(parsedDate.getMonth() + 1).padStart(2, '0'),
+                                String(parsedDate.getDate()).padStart(2, '0')
+                            ].join('-');
+                        }
+                    }
+
+                    // 有効な年月日の場合のみ自動入力
+                    if (normalizedDate) {
+                        const date = new Date(`${normalizedDate}T00:00:00Z`);
 
                         if (
                             !Number.isNaN(date.getTime()) &&
-                            date.toISOString().slice(0, 10) === publishedDate
+                            date.toISOString().slice(0, 10) === normalizedDate
                         ) {
-                            publishedDateEl.value = publishedDate;
+                            publishedDateEl.value = normalizedDate;
                         }
-                    } else {
-                        publishedDateEl.value = '';
                     }
                 }
 
-                // APIカテゴリと登録済みジャンル名が完全一致したものだけ選択
+                // APIカテゴリと登録済みジャンル名が完全一致した場合のみ選択
                 const categories = Array.isArray(data.categories)
                     ? data.categories
                     : (Array.isArray(data.genres) ? data.genres : []);
@@ -164,7 +184,7 @@
                     checkbox.checked = categoryNames.includes(genreName);
                 });
 
-                // 自動入力後も各項目は自由に編集できる
+                // 自動入力後も各項目は自由に編集可能
                 successEl.textContent = '書籍情報を取得しました。';
                 successEl.classList.remove('hidden');
 
