@@ -12,7 +12,7 @@ class GenreDestroyTest extends TestCase
 {
     use RefreshDatabase;
 
-    // ログインユーザーはジャンルを削除できる
+    // 書籍と紐付いていないジャンルは削除できる
     public function test_authenticated_user_can_delete_genre(): void
     {
         $user = User::factory()->create();
@@ -22,14 +22,15 @@ class GenreDestroyTest extends TestCase
             ->delete(route('genres.destroy', $genre));
 
         $response->assertRedirect(route('genres.index'));
+        $response->assertSessionHas('success', 'ジャンルを削除しました。');
 
         $this->assertDatabaseMissing('genres', [
             'id' => $genre->id,
         ]);
     }
 
-    // ジャンルを削除しても紐付く書籍は削除されない
-    public function test_deleting_genre_does_not_delete_books(): void
+    // 書籍と紐付いているジャンルは削除できない
+    public function test_genre_with_books_cannot_be_deleted(): void
     {
         $user = User::factory()->create();
         $genre = Genre::create(['name' => '小説']);
@@ -47,16 +48,25 @@ class GenreDestroyTest extends TestCase
 
         $response->assertRedirect(route('genres.index'));
 
-        $this->assertDatabaseMissing('genres', [
+        $response->assertSessionHas(
+            'error',
+            '書籍が紐付いているジャンルは削除できません。'
+        );
+
+        // ジャンルが削除されていないこと
+        $this->assertDatabaseHas('genres', [
             'id' => $genre->id,
+            'name' => '小説',
         ]);
 
+        // 書籍も削除されていないこと
         $this->assertDatabaseHas('books', [
             'id' => $book->id,
             'title' => 'テスト小説',
         ]);
 
-        $this->assertDatabaseMissing('book_genre', [
+        // 書籍とジャンルの紐付けも維持されていること
+        $this->assertDatabaseHas('book_genre', [
             'book_id' => $book->id,
             'genre_id' => $genre->id,
         ]);

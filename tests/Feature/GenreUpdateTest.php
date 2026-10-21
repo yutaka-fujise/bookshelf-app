@@ -36,7 +36,7 @@ class GenreUpdateTest extends TestCase
                 'name' => '文学',
             ]);
 
-        $response->assertRedirect(route('genres.index'));
+        $response->assertRedirect(route('genres.show', $genre));
 
         $this->assertDatabaseHas('genres', [
             'id' => $genre->id,
@@ -56,6 +56,7 @@ class GenreUpdateTest extends TestCase
             ]);
 
         $response->assertSessionHasErrors('name');
+
         $this->assertDatabaseHas('genres', [
             'id' => $genre->id,
             'name' => '小説',
@@ -75,39 +76,57 @@ class GenreUpdateTest extends TestCase
             ]);
 
         $response->assertSessionHasErrors('name');
+
         $this->assertDatabaseHas('genres', [
             'id' => $genre->id,
             'name' => '小説',
         ]);
     }
 
-    // 自分自身と同じ名前への更新は許可する
+    // 同じジャンル名の場合は更新せず、メッセージを表示する
     public function test_genre_can_keep_its_current_name(): void
     {
         $user = User::factory()->create();
         $genre = Genre::create(['name' => '小説']);
+
+        $originalUpdatedAt = $genre->updated_at;
 
         $response = $this->actingAs($user)
             ->put(route('genres.update', $genre), [
                 'name' => '小説',
             ]);
 
-        $response->assertRedirect(route('genres.index'));
-        $this->assertDatabaseCount('genres', 1);
+        $response->assertRedirect(route('genres.show', $genre));
+        $response->assertSessionHas('info', '変更内容がありません。');
+
+        $this->assertDatabaseHas('genres', [
+            'id' => $genre->id,
+            'name' => '小説',
+        ]);
+
+        $this->assertEquals(
+            $originalUpdatedAt,
+            $genre->fresh()->updated_at
+        );
     }
 
-    // 255文字を超えるジャンル名は拒否する
-    public function test_genre_name_cannot_exceed_255_characters_on_update(): void
+    // 50文字を超えるジャンル名は拒否する
+    public function test_genre_name_cannot_exceed_50_characters_on_update(): void
     {
         $user = User::factory()->create();
         $genre = Genre::create(['name' => '小説']);
 
         $response = $this->actingAs($user)
             ->put(route('genres.update', $genre), [
-                'name' => str_repeat('あ', 256),
+                'name' => str_repeat('あ', 51),
             ]);
 
         $response->assertSessionHasErrors('name');
+
+        $this->assertDatabaseHas('genres', [
+            'id' => $genre->id,
+            'name' => '小説',
+        ]);
     }
 
     // 存在しないジャンルの編集画面は404

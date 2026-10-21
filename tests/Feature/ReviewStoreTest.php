@@ -23,7 +23,7 @@ class ReviewStoreTest extends TestCase
         ]);
 
         $response = $this->actingAs($user)
-            ->post("/books/{$book->id}/reviews", [
+            ->post(route('reviews.store', $book), [
                 'rating' => 5,
                 'comment' => 'とても面白い本でした。',
             ]);
@@ -36,6 +36,7 @@ class ReviewStoreTest extends TestCase
         ]);
 
         $response->assertRedirect(route('books.show', $book));
+        $response->assertSessionHas('success', 'レビューを投稿しました。');
     }
 
     public function test_guest_cannot_store_review(): void
@@ -68,14 +69,12 @@ class ReviewStoreTest extends TestCase
             'published_at' => '2026-10-14',
         ]);
 
-        // すでにレビューを1件投稿している状態
         $book->reviews()->create([
             'user_id' => $user->id,
             'rating' => 4,
             'comment' => '最初のレビュー',
         ]);
 
-        // 同じユーザーが再投稿
         $response = $this->actingAs($user)
             ->post(route('reviews.store', $book), [
                 'rating' => 5,
@@ -84,7 +83,6 @@ class ReviewStoreTest extends TestCase
 
         $response->assertSessionHasErrors('review');
 
-        // レビュー件数が増えていないこと
         $this->assertDatabaseCount('reviews', 1);
 
         $this->assertDatabaseMissing('reviews', [
@@ -109,10 +107,7 @@ class ReviewStoreTest extends TestCase
                 'comment' => '',
             ]);
 
-        $response->assertSessionHasErrors([
-            'rating',
-            'comment',
-        ]);
+        $response->assertSessionHasErrors('rating');
 
         $this->assertDatabaseCount('reviews', 0);
     }
@@ -161,5 +156,36 @@ class ReviewStoreTest extends TestCase
         $response->assertSessionHasErrors('comment');
 
         $this->assertDatabaseCount('reviews', 0);
+    }
+
+    public function test_authenticated_user_can_store_review_without_comment(): void
+    {
+        $user = User::factory()->create();
+
+        $book = Book::create([
+            'title' => 'コメントなしレビューテスト書籍',
+            'author' => 'テスト著者',
+            'isbn13' => '9784000000013',
+            'published_at' => '2026-10-14',
+        ]);
+
+        $response = $this->actingAs($user)
+            ->post(route('reviews.store', $book), [
+                'rating' => 5,
+                'comment' => '',
+            ]);
+
+        $response->assertSessionHasNoErrors();
+
+        $response->assertRedirect(route('books.show', $book));
+
+        $response->assertSessionHas('success', 'レビューを投稿しました。');
+
+        $this->assertDatabaseHas('reviews', [
+            'user_id' => $user->id,
+            'book_id' => $book->id,
+            'rating' => 5,
+            'comment' => null,
+        ]);
     }
 }

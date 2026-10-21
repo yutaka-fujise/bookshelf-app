@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Genre;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class GenreController extends Controller
 {
@@ -13,32 +15,32 @@ class GenreController extends Controller
 
     public function index()
     {
-        $genres = \App\Models\Genre::withCount('books')
+        $genres = Genre::withCount('books')
             ->orderBy('id')
             ->get();
 
         return view('genres.index', compact('genres'));
     }
 
-    public function store(\Illuminate\Http\Request $request)
+    public function store(Request $request)
     {
         $validated = $request->validate([
             'name' => [
                 'required',
                 'string',
-                'max:255',
-                \Illuminate\Validation\Rule::unique('genres', 'name'),
+                'max:50',
+                Rule::unique('genres', 'name'),
             ],
         ]);
 
-        \App\Models\Genre::create($validated);
+        Genre::create($validated);
 
         return redirect()
             ->route('genres.index')
             ->with('success', 'ジャンルを登録しました。');
     }
 
-    public function show(\App\Models\Genre $genre)
+    public function show(Genre $genre)
     {
         $books = $genre->books()
             ->with('genres')
@@ -48,38 +50,51 @@ class GenreController extends Controller
         return view('genres.show', compact('genre', 'books'));
     }
 
-    public function edit(\App\Models\Genre $genre)
+    public function edit(Genre $genre)
     {
         return view('genres.edit', compact('genre'));
     }
 
-    public function update(
-        \Illuminate\Http\Request $request,
-        \App\Models\Genre $genre
-    ) {
+    public function update(Request $request, Genre $genre)
+    {
         $validated = $request->validate([
             'name' => [
                 'required',
                 'string',
-                'max:255',
-                \Illuminate\Validation\Rule::unique('genres', 'name')
+                'max:50',
+                Rule::unique('genres', 'name')
                     ->ignore($genre->id),
             ],
         ]);
 
+        // 変更がない場合はDBを更新しない
+        if ($genre->name === $validated['name']) {
+            return redirect()
+                ->route('genres.show', $genre)
+                ->with('info', '変更内容がありません。');
+        }
+
+        // 変更がある場合だけ更新する
         $genre->update($validated);
 
         return redirect()
-            ->route('genres.index')
+            ->route('genres.show', $genre)
             ->with('success', 'ジャンルを更新しました。');
     }
 
-    public function destroy(\App\Models\Genre $genre)
+    public function destroy(Genre $genre)
     {
-        // 書籍との紐付けを解除
-        $genre->books()->detach();
+        // 書籍が紐付いているジャンルは削除できない
+        if ($genre->books()->exists()) {
+            return redirect()
+                ->route('genres.index')
+                ->with(
+                    'error',
+                    '書籍が紐付いているジャンルは削除できません。'
+                );
+        }
 
-        // ジャンル本体を削除
+        // 書籍が紐付いていない場合のみ削除する
         $genre->delete();
 
         return redirect()

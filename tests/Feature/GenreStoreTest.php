@@ -62,14 +62,14 @@ class GenreStoreTest extends TestCase
         $this->assertDatabaseCount('genres', 1);
     }
 
-    // ジャンル名は255文字以内
-    public function test_genre_name_cannot_exceed_255_characters(): void
+    // ジャンル名は50文字以内
+    public function test_genre_name_cannot_exceed_50_characters(): void
     {
         $user = User::factory()->create();
 
         $response = $this->actingAs($user)
             ->post('/genres', [
-                'name' => str_repeat('あ', 256),
+                'name' => str_repeat('あ', 51),
             ]);
 
         $response->assertSessionHasErrors('name');

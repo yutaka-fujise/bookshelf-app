@@ -165,10 +165,7 @@ class ReviewUpdateTest extends TestCase
                 'comment' => '',
             ]);
 
-        $response->assertSessionHasErrors([
-            'rating',
-            'comment',
-        ]);
+        $response->assertSessionHasErrors('rating');
 
         $this->assertDatabaseHas('reviews', [
             'id' => $review->id,
@@ -207,5 +204,76 @@ class ReviewUpdateTest extends TestCase
             'rating' => 4,
             'comment' => '元のコメント',
         ]);
+    }
+
+    public function test_owner_can_update_review_without_comment(): void
+    {
+        $owner = User::factory()->create();
+
+        $book = Book::create([
+            'title' => 'コメントなし更新テスト書籍',
+            'author' => 'テスト著者',
+            'isbn13' => '9784000000036',
+        ]);
+
+        $review = $book->reviews()->create([
+            'user_id' => $owner->id,
+            'rating' => 4,
+            'comment' => '更新前のコメント',
+        ]);
+
+        $response = $this->actingAs($owner)
+            ->put(route('reviews.update', $review), [
+                'rating' => 5,
+                'comment' => '',
+            ]);
+
+        $response->assertSessionHasNoErrors();
+        $response->assertRedirect(route('books.show', $book));
+
+        $this->assertDatabaseHas('reviews', [
+            'id' => $review->id,
+            'rating' => 5,
+            'comment' => null,
+        ]);
+    }
+
+    public function test_updating_review_without_changes_shows_message(): void
+    {
+        $owner = User::factory()->create();
+
+        $book = Book::create([
+            'title' => '変更なしレビューテスト書籍',
+            'author' => 'テスト著者',
+            'isbn13' => '9784000000037',
+        ]);
+
+        $review = $book->reviews()->create([
+            'user_id' => $owner->id,
+            'rating' => 4,
+            'comment' => '変更しないコメント',
+        ]);
+
+        $originalUpdatedAt = $review->updated_at;
+
+        $response = $this->actingAs($owner)
+            ->put(route('reviews.update', $review), [
+                'rating' => 4,
+                'comment' => '変更しないコメント',
+            ]);
+
+        $response->assertRedirect(route('books.show', $book));
+        $response->assertSessionHas('info', '変更内容がありません。');
+
+        $this->assertDatabaseHas('reviews', [
+            'id' => $review->id,
+            'rating' => 4,
+            'comment' => '変更しないコメント',
+        ]);
+
+        $this->assertEquals(
+            $originalUpdatedAt,
+            $review->fresh()->updated_at
+        );
     }
 }

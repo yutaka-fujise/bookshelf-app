@@ -8,8 +8,31 @@
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="mb-4">
-                <a href="{{ route('books.index') }}" class="text-blue-600 hover:text-blue-800">← 書籍一覧に戻る</a>
+                <a href="{{ route('books.index') }}" class="text-blue-600 hover:text-blue-800">
+                    ← 書籍一覧に戻る
+                </a>
             </div>
+
+            {{-- 更新成功メッセージ --}}
+            @if(session('success'))
+                <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+                    {{ session('success') }}
+                </div>
+            @endif
+
+            {{-- 変更なしメッセージ --}}
+            @if(session('info'))
+                <div class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
+                    {{ session('info') }}
+                </div>
+            @endif
+
+            {{-- エラーメッセージ --}}
+            @if(session('error'))
+                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                    {{ session('error') }}
+                </div>
+            @endif
 
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900">
@@ -18,16 +41,27 @@
                     @else
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             @foreach($books as $book)
-                                <a href="{{ route('books.show', $book) }}" class="block border rounded-lg p-4 shadow hover:shadow-lg transition">
+                                <a href="{{ route('books.show', $book) }}"
+                                   class="block border rounded-lg p-4 shadow hover:shadow-lg transition">
+
                                     @if($book->image_url)
-                                        <img src="{{ $book->image_url }}" alt="{{ $book->title }}" class="w-full h-48 object-cover mb-4 rounded">
+                                        <img src="{{ $book->image_url }}"
+                                             alt="{{ $book->title }}"
+                                             class="w-full h-48 object-cover mb-4 rounded">
                                     @else
                                         <div class="w-full h-48 bg-gray-200 flex items-center justify-center mb-4 rounded">
                                             <span class="text-gray-500">画像なし</span>
                                         </div>
                                     @endif
-                                    <h3 class="font-bold text-lg mb-2 text-blue-600">{{ $book->title }}</h3>
-                                    <p class="text-gray-600 text-sm mb-2">{{ $book->author }}</p>
+
+                                    <h3 class="font-bold text-lg mb-2 text-blue-600">
+                                        {{ $book->title }}
+                                    </h3>
+
+                                    <p class="text-gray-600 text-sm mb-2">
+                                        {{ $book->author }}
+                                    </p>
+
                                     <div class="flex flex-wrap gap-1">
                                         @foreach($book->genres as $g)
                                             <span class="bg-gray-200 text-gray-700 text-xs px-2 py-1 rounded {{ $g->id === $genre->id ? 'bg-blue-200 text-blue-700' : '' }}">

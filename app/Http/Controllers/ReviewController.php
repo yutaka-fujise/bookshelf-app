@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Book;
+use App\Models\Review;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -12,21 +13,23 @@ class ReviewController extends Controller
     {
         $validated = $request->validate([
             'rating' => ['required', 'integer', 'between:1,5'],
-            'comment' => ['required', 'string', 'max:1000'],
+            'comment' => ['nullable', 'string', 'max:1000'],
         ]);
 
         if ($book->reviews()
             ->where('user_id', $request->user()->id)
             ->exists()) {
             return back()
-                ->withErrors(['review' => 'この書籍にはすでにレビューを投稿しています。'])
+                ->withErrors([
+                    'review' => 'この書籍にはすでにレビューを投稿しています。',
+                ])
                 ->withInput();
         }
 
         $book->reviews()->create([
             'user_id' => $request->user()->id,
             'rating' => $validated['rating'],
-            'comment' => $validated['comment'],
+            'comment' => $validated['comment'] ?? null,
         ]);
 
         return redirect()
@@ -34,7 +37,7 @@ class ReviewController extends Controller
             ->with('success', 'レビューを投稿しました。');
     }
 
-    public function like(Request $request, \App\Models\Review $review): RedirectResponse
+    public function like(Request $request, Review $review): RedirectResponse
     {
         $user = $request->user();
 
@@ -51,7 +54,7 @@ class ReviewController extends Controller
 
     public function update(
         Request $request,
-        \App\Models\Review $review
+        Review $review
     ): RedirectResponse {
         // 投稿者本人か確認
         abort_unless(
@@ -62,26 +65,38 @@ class ReviewController extends Controller
         // 入力内容を検証
         $validated = $request->validate([
             'rating' => ['required', 'integer', 'between:1,5'],
-            'comment' => ['required', 'string', 'max:1000'],
+            'comment' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        // レビューを更新
-        $review->update($validated);
+        // 評価とコメントの両方が変更されていなければ更新しない
+        if (
+            (int) $review->rating === (int) $validated['rating']
+            && $review->comment === ($validated['comment'] ?? null)
+        ) {
+            return redirect()
+                ->route('books.show', $review->book_id)
+                ->with('info', '変更内容がありません。');
+        }
+
+        // 変更がある場合だけ更新する
+        $review->update([
+            'rating' => $validated['rating'],
+            'comment' => $validated['comment'] ?? null,
+        ]);
 
         return redirect()
             ->route('books.show', $review->book_id)
             ->with('success', 'レビューを更新しました。');
     }
 
-    public function edit(\App\Models\Review $review)
+    public function edit(Review $review)
     {
-        // レビューの投稿者本人だけが編集可能
+        // レビュー投稿者本人だけが編集可能
         abort_unless(
             auth()->id() === $review->user_id,
             403
         );
 
-        // 編集画面で書籍タイトルを表示するために取得
         $review->load('book');
 
         return view('reviews.edit', compact('review'));
@@ -89,7 +104,7 @@ class ReviewController extends Controller
 
     public function destroy(
         Request $request,
-        \App\Models\Review $review
+        Review $review
     ): RedirectResponse {
         // レビュー投稿者本人だけが削除できる
         abort_unless(
@@ -97,10 +112,8 @@ class ReviewController extends Controller
             403
         );
 
-        // 削除後に戻る書籍IDを保存
         $bookId = $review->book_id;
 
-        // レビューを削除
         $review->delete();
 
         return redirect()
