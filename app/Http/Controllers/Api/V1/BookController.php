@@ -133,4 +133,44 @@ class BookController extends Controller
             ],
         ], 201);
     }
+
+    public function update(
+        \App\Http\Requests\UpdateBookRequest $request,
+        Book $book
+    ) {
+        $validated = $request->validated();
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($book, $validated) {
+            $book->update([
+                'title' => $validated['title'],
+                'author' => $validated['author'],
+                'isbn13' => $validated['isbn'],
+                'published_at' => $validated['published_date'],
+                'description' => $validated['description'] ?? null,
+                'image_url' => $validated['image_url'] ?? null,
+            ]);
+
+            $book->genres()->sync($validated['genres']);
+        });
+
+        $book->load('genres');
+
+        return response()->json([
+            'data' => [
+                'id' => $book->id,
+                'title' => $book->title,
+                'author' => $book->author,
+                'isbn13' => $book->isbn13,
+                'published_at' => $book->published_at,
+                'description' => $book->description,
+                'image_url' => $book->image_url,
+                'genres' => $book->genres->map(function ($genre) {
+                    return [
+                        'id' => $genre->id,
+                        'name' => $genre->name,
+                    ];
+                }),
+            ],
+        ]);
+    }
 }

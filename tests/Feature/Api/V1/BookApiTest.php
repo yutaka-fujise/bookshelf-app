@@ -258,4 +258,175 @@ class BookApiTest extends TestCase
         $response->assertUnprocessable()
             ->assertJsonValidationErrors(['genres.0']);
     }
+
+    public function test_book_owner_can_update_book(): void
+    {
+        $user = \App\Models\User::factory()->create();
+
+        $oldGenre = \App\Models\Genre::create([
+            'name' => '更新前ジャンル',
+        ]);
+
+        $newGenre = \App\Models\Genre::create([
+            'name' => '更新後ジャンル',
+        ]);
+
+        $book = \App\Models\Book::create([
+            'user_id' => $user->id,
+            'title' => '更新前の書籍',
+            'author' => '更新前の著者',
+            'isbn13' => '9784000000600',
+            'published_at' => '2026-10-21',
+        ]);
+
+        $book->genres()->attach($oldGenre->id);
+
+        $response = $this->actingAs($user)->putJson("/api/v1/books/{$book->id}", [
+            'title' => '更新後の書籍',
+            'author' => '更新後の著者',
+            'isbn' => '9784000000600',
+            'published_date' => '2026-10-21',
+            'genres' => [$newGenre->id],
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('data.title', '更新後の書籍')
+            ->assertJsonPath('data.genres.0.id', $newGenre->id);
+
+        $this->assertDatabaseHas('books', [
+            'id' => $book->id,
+            'user_id' => $user->id,
+            'title' => '更新後の書籍',
+            'author' => '更新後の著者',
+        ]);
+
+        $this->assertDatabaseHas('book_genre', [
+            'book_id' => $book->id,
+            'genre_id' => $newGenre->id,
+        ]);
+
+        $this->assertDatabaseMissing('book_genre', [
+            'book_id' => $book->id,
+            'genre_id' => $oldGenre->id,
+        ]);
+    }
+
+    public function test_guest_cannot_update_book(): void
+    {
+        $book = \App\Models\Book::create([
+            'title' => '未認証更新テスト書籍',
+            'author' => 'テスト著者',
+            'isbn13' => '9784000000700',
+            'published_at' => '2026-10-21',
+        ]);
+
+        $response = $this->putJson("/api/v1/books/{$book->id}", [
+            'title' => '不正な更新',
+        ]);
+
+        $response->assertUnauthorized();
+
+        $this->assertDatabaseHas('books', [
+            'id' => $book->id,
+            'title' => '未認証更新テスト書籍',
+        ]);
+    }
+
+    public function test_other_user_cannot_update_book(): void
+    {
+        $owner = \App\Models\User::factory()->create();
+        $otherUser = \App\Models\User::factory()->create();
+
+        $book = \App\Models\Book::create([
+            'user_id' => $owner->id,
+            'title' => '所有者の書籍',
+            'author' => 'テスト著者',
+            'isbn13' => '9784000000800',
+            'published_at' => '2026-10-21',
+        ]);
+
+        $response = $this->actingAs($otherUser)->putJson("/api/v1/books/{$book->id}", [
+            'title' => '勝手に変更した書籍',
+        ]);
+
+        $response->assertForbidden();
+
+        $this->assertDatabaseHas('books', [
+            'id' => $book->id,
+            'user_id' => $owner->id,
+            'title' => '所有者の書籍',
+        ]);
+    }
+
+    public function test_book_update_requires_mandatory_fields(): void
+    {
+        $user = \App\Models\User::factory()->create();
+
+        $book = \App\Models\Book::create([
+            'user_id' => $user->id,
+            'title' => '更新前の書籍',
+            'author' => 'テスト著者',
+            'isbn13' => '9784000000900',
+            'published_at' => '2026-10-21',
+        ]);
+
+        $response = $this->actingAs($user)
+            ->putJson("/api/v1/books/{$book->id}", []);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors([
+                'title',
+                'author',
+                'isbn',
+                'published_date',
+                'genres',
+            ]);
+
+        $this->assertDatabaseHas('books', [
+            'id' => $book->id,
+            'title' => '更新前の書籍',
+        ]);
+    }
+
+    public function test_book_update_rejects_duplicate_isbn(): void
+    {
+        $user = \App\Models\User::factory()->create();
+
+        \App\Models\Book::create([
+            'title' => '別の書籍',
+            'author' => '別の著者',
+            'isbn13' => '9784000001000',
+            'published_at' => '2026-10-21',
+        ]);
+
+        $book = \App\Models\Book::create([
+            'user_id' => $user->id,
+            'title' => '更新対象の書籍',
+            'author' => 'テスト著者',
+            'isbn13' => '9784000001001',
+            'published_at' => '2026-10-21',
+        ]);
+
+        $genre = \App\Models\Genre::create([
+            'name' => 'PUT重複テストジャンル',
+        ]);
+
+        $response = $this->actingAs($user)
+            ->putJson("/api/v1/books/{$book->id}", [
+                'title' => '更新後の書籍',
+                'author' => 'テスト著者',
+                'isbn' => '9784000001000',
+                'published_date' => '2026-10-21',
+                'genres' => [$genre->id],
+            ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['isbn']);
+
+        $this->assertDatabaseHas('books', [
+            'id' => $book->id,
+            'title' => '更新対象の書籍',
+            'isbn13' => '9784000001001',
+        ]);
+    }
 }
