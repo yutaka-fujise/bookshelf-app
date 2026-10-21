@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Genre;
 use App\Models\ReadingPlan;
 use App\Models\Review;
 use Illuminate\Support\Facades\Auth;
@@ -17,18 +18,22 @@ class ReadingReportController extends Controller
         $stats = [
             'summary' => [
                 'total_reviews' => (clone $reviews)->count(),
+
                 'books_read' => ReadingPlan::where('user_id', $userId)
                     ->where('status', 'completed')
                     ->distinct()
                     ->count('book_id'),
+
                 'average_rating' => (float) ((clone $reviews)->avg('rating') ?? 0),
             ],
+
             'rating_distribution' => collect(range(1, 5))
                 ->map(function ($rating) use ($reviews) {
                     return (clone $reviews)
                         ->where('rating', $rating)
                         ->count();
                 }),
+
             'top_rated_books' => (clone $reviews)
                 ->with('book')
                 ->where('rating', '>=', 4)
@@ -45,7 +50,8 @@ class ReadingReportController extends Controller
                         'rating' => $review->rating,
                     ];
                 }),
-            'genre_ratings' => \App\Models\Genre::query()
+
+            'genre_ratings' => Genre::query()
                 ->whereHas('books.reviews', function ($query) use ($userId) {
                     $query->where('user_id', $userId);
                 })
@@ -68,6 +74,7 @@ class ReadingReportController extends Controller
                 })
                 ->sort(function ($a, $b) {
                     return ($b['average_rating'] <=> $a['average_rating'])
+                        ?: ($b['count'] <=> $a['count'])
                         ?: ($a['id'] <=> $b['id']);
                 })
                 ->take(5)
