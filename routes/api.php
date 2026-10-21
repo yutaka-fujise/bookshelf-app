@@ -1,3 +1,4 @@
+
 <?php
 
 use Illuminate\Http\Request;
@@ -21,3 +22,6 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 Route::get('/v1/books', [\App\Http\Controllers\Api\V1\BookController::class, 'index']);
 
 Route::get('/v1/books/{book}', [\App\Http\Controllers\Api\V1\BookController::class, 'show']);
+
+Route::post('/v1/books', [\App\Http\Controllers\Api\V1\BookController::class, 'store'])
+    ->middleware('auth:sanctum');
