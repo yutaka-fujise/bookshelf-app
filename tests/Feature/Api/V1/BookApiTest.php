@@ -445,7 +445,8 @@ class BookApiTest extends TestCase
         $response = $this->actingAs($user)
             ->deleteJson("/api/v1/books/{$book->id}");
 
-        $response->assertNoContent();
+        $response->assertOk()
+            ->assertJsonPath('message', '書籍を削除しました。');
 
         $this->assertDatabaseMissing('books', [
             'id' => $book->id,
@@ -504,5 +505,166 @@ class BookApiTest extends TestCase
             ->deleteJson('/api/v1/books/999999');
 
         $response->assertNotFound();
+    }
+
+    public function test_updating_nonexistent_book_returns_404(): void
+    {
+        $user = \App\Models\User::factory()->create();
+
+        $response = $this->actingAs($user)
+            ->putJson('/api/v1/books/999999', [
+                'title' => '存在しない書籍の更新',
+            ]);
+
+        $response->assertNotFound();
+    }
+
+    public function test_deleting_book_also_deletes_related_data(): void
+    {
+        $user = \App\Models\User::factory()->create();
+
+        $genre = \App\Models\Genre::create([
+            'name' => '削除連動テストジャンル',
+        ]);
+
+        $book = \App\Models\Book::create([
+            'user_id' => $user->id,
+            'title' => '関連データ削除テスト書籍',
+            'author' => 'テスト著者',
+            'isbn13' => '9784000001400',
+            'published_at' => '2026-10-21',
+        ]);
+
+        $book->genres()->attach($genre->id);
+
+        $review = \App\Models\Review::create([
+            'user_id' => $user->id,
+            'book_id' => $book->id,
+            'rating' => 5,
+            'comment' => '削除連動テスト',
+        ]);
+
+        $favorite = \App\Models\Favorite::create([
+            'user_id' => $user->id,
+            'book_id' => $book->id,
+        ]);
+
+        $response = $this->actingAs($user)
+            ->deleteJson("/api/v1/books/{$book->id}");
+
+        $response->assertOk()
+            ->assertJsonPath('message', '書籍を削除しました。');
+
+        $this->assertDatabaseMissing('books', ['id' => $book->id]);
+        $this->assertDatabaseMissing('reviews', ['id' => $review->id]);
+        $this->assertDatabaseMissing('favorites', ['id' => $favorite->id]);
+        $this->assertDatabaseMissing('book_genre', [
+            'book_id' => $book->id,
+            'genre_id' => $genre->id,
+        ]);
+
+        $this->assertDatabaseHas('genres', ['id' => $genre->id]);
+    }
+
+    public function test_valid_bearer_token_can_store_book(): void
+    {
+        $user = \App\Models\User::factory()->create();
+
+        $genre = \App\Models\Genre::create([
+            'name' => 'Bearer認証テストジャンル',
+        ]);
+
+        $token = $user->createToken('bookshelf-api-test')->plainTextToken;
+
+        $response = $this->withToken($token)
+            ->postJson('/api/v1/books', [
+                'title' => 'Bearer認証テスト書籍',
+                'author' => 'テスト著者',
+                'isbn' => '9784000001500',
+                'published_date' => '2026-10-21',
+                'genres' => [$genre->id],
+            ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.title', 'Bearer認証テスト書籍');
+
+        $this->assertDatabaseHas('books', [
+            'user_id' => $user->id,
+            'title' => 'Bearer認証テスト書籍',
+            'isbn13' => '9784000001500',
+        ]);
+    }
+
+    public function test_invalid_bearer_token_cannot_store_book(): void
+    {
+        $response = $this->withToken('invalid-bearer-token')
+            ->postJson('/api/v1/books', [
+                'title' => '不正トークンの書籍',
+                'author' => 'テスト著者',
+                'isbn' => '9784000001600',
+                'published_date' => '2026-10-21',
+            ]);
+
+        $response->assertUnauthorized();
+
+        $this->assertDatabaseMissing('books', [
+            'title' => '不正トークンの書籍',
+        ]);
+    }
+
+    public function test_bearer_token_cannot_update_other_users_book(): void
+    {
+        $owner = \App\Models\User::factory()->create();
+        $otherUser = \App\Models\User::factory()->create();
+
+        $book = \App\Models\Book::create([
+            'user_id' => $owner->id,
+            'title' => 'Bearer権限テスト書籍',
+            'author' => 'テスト著者',
+            'isbn13' => '9784000001700',
+            'published_at' => '2026-10-21',
+        ]);
+
+        $token = $otherUser->createToken('other-user-test')->plainTextToken;
+
+        $response = $this->withToken($token)
+            ->putJson("/api/v1/books/{$book->id}", [
+                'title' => '不正に変更した書籍',
+            ]);
+
+        $response->assertForbidden();
+
+        $this->assertDatabaseHas('books', [
+            'id' => $book->id,
+            'user_id' => $owner->id,
+            'title' => 'Bearer権限テスト書籍',
+        ]);
+    }
+
+    public function test_bearer_token_cannot_delete_other_users_book(): void
+    {
+        $owner = \App\Models\User::factory()->create();
+        $otherUser = \App\Models\User::factory()->create();
+
+        $book = \App\Models\Book::create([
+            'user_id' => $owner->id,
+            'title' => 'Bearer削除権限テスト書籍',
+            'author' => 'テスト著者',
+            'isbn13' => '9784000001800',
+            'published_at' => '2026-10-21',
+        ]);
+
+        $token = $otherUser->createToken('delete-permission-test')->plainTextToken;
+
+        $response = $this->withToken($token)
+            ->deleteJson("/api/v1/books/{$book->id}");
+
+        $response->assertForbidden();
+
+        $this->assertDatabaseHas('books', [
+            'id' => $book->id,
+            'user_id' => $owner->id,
+            'title' => 'Bearer削除権限テスト書籍',
+        ]);
     }
 }

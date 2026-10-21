@@ -183,6 +183,8 @@ class BookController extends Controller
 
         $book->delete();
 
-        return response()->noContent();
+        return response()->json([
+            'message' => '書籍を削除しました。',
+        ], 200);
     }
 }
