@@ -173,4 +173,16 @@ class BookController extends Controller
             ],
         ]);
     }
+
+    public function destroy(\Illuminate\Http\Request $request, Book $book)
+    {
+        abort_unless(
+            $request->user()->id === $book->user_id,
+            403
+        );
+
+        $book->delete();
+
+        return response()->noContent();
+    }
 }
