@@ -102,6 +102,7 @@ class BookUpdateTest extends TestCase
         ]);
     }
 
+    // 変更がなければ更新せず、専用メッセージを表示する
     public function test_updating_book_without_changes_shows_message(): void
     {
         $user = User::factory()->create();
@@ -120,6 +121,9 @@ class BookUpdateTest extends TestCase
 
         $book->genres()->attach($genre->id);
 
+        // 更新前の日時を保存しておく
+        $originalUpdatedAt = $book->fresh()->updated_at;
+
         $response = $this->actingAs($user)
             ->put("/books/{$book->id}", [
                 'title' => '変更なしテスト書籍',
@@ -132,6 +136,7 @@ class BookUpdateTest extends TestCase
         $response->assertRedirect(route('books.show', $book))
             ->assertSessionHas('info', '変更はありませんでした。');
 
+        // 詳細画面にもメッセージが表示されることを確認
         $this->actingAs($user)
             ->get(route('books.show', $book))
             ->assertOk()
@@ -142,8 +147,15 @@ class BookUpdateTest extends TestCase
             'title' => '変更なしテスト書籍',
             'author' => 'テスト著者',
         ]);
+
+        // 変更がない場合は更新日時も変わらない
+        $this->assertEquals(
+            $originalUpdatedAt,
+            $book->fresh()->updated_at
+        );
     }
 
+    // ジャンルだけ変更した場合も正常に更新できる
     public function test_owner_can_update_only_book_genre(): void
     {
         $user = User::factory()->create();
@@ -156,8 +168,13 @@ class BookUpdateTest extends TestCase
             'published_at' => '2026-10-21',
         ]);
 
-        $oldGenre = Genre::create(['name' => '変更前ジャンル']);
-        $newGenre = Genre::create(['name' => '変更後ジャンル']);
+        $oldGenre = Genre::create([
+            'name' => '変更前ジャンル',
+        ]);
+
+        $newGenre = Genre::create([
+            'name' => '変更後ジャンル',
+        ]);
 
         $book->genres()->attach($oldGenre->id);
 
