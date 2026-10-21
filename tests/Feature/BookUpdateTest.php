@@ -101,4 +101,86 @@ class BookUpdateTest extends TestCase
             'title' => 'ログイン必須の書籍',
         ]);
     }
+
+    public function test_updating_book_without_changes_shows_message(): void
+    {
+        $user = User::factory()->create();
+
+        $book = Book::create([
+            'user_id' => $user->id,
+            'title' => '変更なしテスト書籍',
+            'author' => 'テスト著者',
+            'isbn13' => '9784000001900',
+            'published_at' => '2026-10-21',
+        ]);
+
+        $genre = Genre::create([
+            'name' => '変更なしテストジャンル',
+        ]);
+
+        $book->genres()->attach($genre->id);
+
+        $response = $this->actingAs($user)
+            ->put("/books/{$book->id}", [
+                'title' => '変更なしテスト書籍',
+                'author' => 'テスト著者',
+                'isbn' => '9784000001900',
+                'published_date' => '2026-10-21',
+                'genres' => [$genre->id],
+            ]);
+
+        $response->assertRedirect(route('books.show', $book))
+            ->assertSessionHas('info', '変更はありませんでした。');
+
+        $this->actingAs($user)
+            ->get(route('books.show', $book))
+            ->assertOk()
+            ->assertSee('変更はありませんでした。');
+
+        $this->assertDatabaseHas('books', [
+            'id' => $book->id,
+            'title' => '変更なしテスト書籍',
+            'author' => 'テスト著者',
+        ]);
+    }
+
+    public function test_owner_can_update_only_book_genre(): void
+    {
+        $user = User::factory()->create();
+
+        $book = Book::create([
+            'user_id' => $user->id,
+            'title' => 'ジャンル変更テスト書籍',
+            'author' => 'テスト著者',
+            'isbn13' => '9784000002000',
+            'published_at' => '2026-10-21',
+        ]);
+
+        $oldGenre = Genre::create(['name' => '変更前ジャンル']);
+        $newGenre = Genre::create(['name' => '変更後ジャンル']);
+
+        $book->genres()->attach($oldGenre->id);
+
+        $response = $this->actingAs($user)
+            ->put("/books/{$book->id}", [
+                'title' => 'ジャンル変更テスト書籍',
+                'author' => 'テスト著者',
+                'isbn' => '9784000002000',
+                'published_date' => '2026-10-21',
+                'genres' => [$newGenre->id],
+            ]);
+
+        $response->assertRedirect(route('books.show', $book))
+            ->assertSessionHas('success', '書籍を更新しました。');
+
+        $this->assertDatabaseHas('book_genre', [
+            'book_id' => $book->id,
+            'genre_id' => $newGenre->id,
+        ]);
+
+        $this->assertDatabaseMissing('book_genre', [
+            'book_id' => $book->id,
+            'genre_id' => $oldGenre->id,
+        ]);
+    }
 }

@@ -161,6 +161,32 @@ class BookController extends Controller
     ) {
         $validated = $request->validated();
 
+        $book->load('genres');
+
+        $fields = [
+            'title' => $validated['title'],
+            'author' => $validated['author'],
+            'isbn13' => $validated['isbn'],
+            'published_at' => $validated['published_date'],
+            'description' => $validated['description'] ?? null,
+            'image_url' => $validated['image_url'] ?? null,
+        ];
+
+        $bookChanged = collect($fields)->contains(
+            fn ($value, $key) => $book->{$key} instanceof \Carbon\CarbonInterface
+                ? $book->{$key}->format('Y-m-d') !== $value
+                : $book->{$key} !== $value
+        );
+
+        $currentGenres = $book->genres->pluck('id')->sort()->values()->all();
+        $submittedGenres = collect($validated['genres'])->sort()->values()->all();
+
+        if (!$bookChanged && $currentGenres === $submittedGenres) {
+            return redirect()
+                ->route('books.show', $book)
+                ->with('info', '変更はありませんでした。');
+        }
+
         \Illuminate\Support\Facades\DB::transaction(function () use ($book, $validated) {
             $book->update([
                 'title' => $validated['title'],
