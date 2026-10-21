@@ -70,6 +70,7 @@ class BookController extends Controller
             'description' => $book['description'] ?? '',
             'published_date' => $book['publishedDate'] ?? '',
             'image_url' => $book['imageLinks']['thumbnail'] ?? '',
+            'categories' => $book['categories'] ?? [],
         ]);
     }
 
