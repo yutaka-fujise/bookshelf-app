@@ -72,4 +72,16 @@ class LoginTest extends TestCase
 
         $response->assertRedirect('/login');
     }
+
+    public function test_user_cannot_login_with_unregistered_email(): void
+    {
+        $response = $this->post('/login', [
+            'email' => 'not-registered@example.com',
+            'password' => 'password123',
+        ]);
+
+        $this->assertGuest();
+
+        $response->assertSessionHasErrors('email');
+    }
 }
