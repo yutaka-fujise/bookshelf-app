@@ -21,7 +21,7 @@
                         </div>
 
                         <div class="flex items-center justify-end">
-                            <a href="{{ route('genres.index') }}" class="text-gray-600 hover:text-gray-900 mr-4">キャンセル</a>
+                            <a href="{{ route('genres.show', $genre) }}" class="text-gray-600 hover:text-gray-900 mr-4">キャンセル</a>
                             <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
                                 更新
                             </button>
