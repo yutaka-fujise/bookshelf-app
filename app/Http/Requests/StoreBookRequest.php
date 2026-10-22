@@ -22,7 +22,10 @@ class StoreBookRequest extends FormRequest
                 'digits:13',
                 Rule::unique('books', 'isbn13'),
             ],
-            'published_date' => ['required', 'date'],
+            'published_date' => [
+                $this->is('api/v1/books') ? 'required' : 'nullable',
+                'date',
+            ],
             'description' => ['nullable', 'string', 'max:1000'],
             'image_url' => ['nullable', 'url', 'max:255'],
             'genres' => ['required', 'array', 'min:1'],

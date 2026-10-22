@@ -78,11 +78,37 @@ class BookStoreTest extends TestCase
             'title',
             'author',
             'isbn',
-            'published_date',
             'genres',
         ]);
 
+        $response->assertSessionDoesntHaveErrors('published_date');
+
         $this->assertDatabaseCount('books', 0);
+    }
+
+    public function test_book_can_be_stored_without_published_date(): void
+    {
+        $user = User::factory()->create();
+        $genre = Genre::create([
+            'name' => '出版日任意テストジャンル',
+        ]);
+
+        $response = $this->actingAs($user)->post('/books', [
+            'title' => '出版日未入力の書籍',
+            'author' => 'テスト著者',
+            'isbn' => '9784000000003',
+            'published_date' => '',
+            'genres' => [$genre->id],
+        ]);
+
+        $response->assertSessionHasNoErrors();
+        $response->assertRedirect();
+
+        $this->assertDatabaseHas('books', [
+            'user_id' => $user->id,
+            'isbn13' => '9784000000003',
+            'published_at' => null,
+        ]);
     }
 
     public function test_book_store_rejects_duplicate_isbn(): void

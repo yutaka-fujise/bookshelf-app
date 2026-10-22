@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
 class UpdateBookRequest extends FormRequest
@@ -13,7 +14,7 @@ class UpdateBookRequest extends FormRequest
 
         return $this->user() !== null
             && $book !== null
-            && $this->user()->id === $book->user_id;
+            && Gate::allows('update', $book);
     }
 
     public function rules(): array
@@ -28,7 +29,10 @@ class UpdateBookRequest extends FormRequest
                 'digits:13',
                 Rule::unique('books', 'isbn13')->ignore($book->id),
             ],
-            'published_date' => ['required', 'date'],
+            'published_date' => [
+                $this->is('api/v1/books/*') ? 'required' : 'nullable',
+                'date',
+            ],
             'description' => ['nullable', 'string', 'max:1000'],
             'image_url' => ['nullable', 'url', 'max:255'],
             'genres' => ['required', 'array', 'min:1'],

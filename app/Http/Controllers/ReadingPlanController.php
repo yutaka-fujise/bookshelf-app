@@ -2,16 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreReadingPlanRequest;
+use App\Http\Requests\UpdateReadingPlanRequest;
 use Illuminate\Http\Request;
 
 class ReadingPlanController extends Controller
 {
-    public function store(\Illuminate\Http\Request $request)
+    public function store(StoreReadingPlanRequest $request)
     {
-        $validated = $request->validate([
-            'book_id' => ['required', 'integer', 'exists:books,id'],
-            'target_date' => ['required', 'date'],
-        ]);
+        $validated = $request->validated();
 
         $user = $request->user();
 
@@ -83,7 +82,7 @@ class ReadingPlanController extends Controller
     }
 
     public function update(
-        \Illuminate\Http\Request $request,
+        UpdateReadingPlanRequest $request,
         \App\Models\ReadingPlan $readingPlan
     ) {
         // 所有者以外は更新できない
@@ -93,9 +92,7 @@ class ReadingPlanController extends Controller
         abort_if($readingPlan->status === 'completed', 403);
 
         // 変更できる項目は目標日だけ
-        $validated = $request->validate([
-            'target_date' => ['required', 'date'],
-        ]);
+        $validated = $request->validated();
 
         // 期限切れから復帰する場合、進行中計画との重複を防ぐ
         if ($readingPlan->status === 'expired') {

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Book;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Http;
 
 class BookController extends Controller
@@ -176,7 +177,7 @@ class BookController extends Controller
                 'title' => $validated['title'],
                 'author' => $validated['author'],
                 'isbn13' => $validated['isbn'],
-                'published_at' => $validated['published_date'],
+                'published_at' => $validated['published_date'] ?? null,
                 'description' => $validated['description'] ?? null,
                 'image_url' => $validated['image_url'] ?? null,
             ]);
@@ -203,7 +204,7 @@ class BookController extends Controller
             'title' => $validated['title'],
             'author' => $validated['author'],
             'isbn13' => $validated['isbn'],
-            'published_at' => $validated['published_date'],
+            'published_at' => $validated['published_date'] ?? null,
             'description' => $validated['description'] ?? null,
             'image_url' => $validated['image_url'] ?? null,
         ];
@@ -228,7 +229,7 @@ class BookController extends Controller
                 'title' => $validated['title'],
                 'author' => $validated['author'],
                 'isbn13' => $validated['isbn'],
-                'published_at' => $validated['published_date'],
+                'published_at' => $validated['published_date'] ?? null,
                 'description' => $validated['description'] ?? null,
                 'image_url' => $validated['image_url'] ?? null,
             ]);
@@ -238,15 +239,12 @@ class BookController extends Controller
 
         return redirect()
             ->route('books.show', $book)
-            ->with('success', '書籍を更新しました。');
+            ->with('success', '書籍情報を更新しました。');
     }
 
     public function edit(Book $book)
     {
-        abort_unless(
-            auth()->id() === $book->user_id,
-            403
-        );
+        Gate::authorize('update', $book);
 
         $book->load('genres');
 
@@ -257,10 +255,7 @@ class BookController extends Controller
 
     public function destroy(Book $book)
     {
-        abort_unless(
-            auth()->id() === $book->user_id,
-            403
-        );
+        Gate::authorize('delete', $book);
 
         $book->delete();
 

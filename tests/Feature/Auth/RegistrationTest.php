@@ -82,7 +82,7 @@ class RegistrationTest extends TestCase
 
         $response->assertSessionHasErrors([
             'name' => 'お名前を入力してください。',
-            'email' => '正しいメールアドレス形式で入力してください。',
+            'email' => 'メールアドレスはメール形式で入力してください',
             'password' => 'パスワードは8文字以上で入力してください。',
         ]);
 

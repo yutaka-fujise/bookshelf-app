@@ -168,6 +168,28 @@ class ReadingPlanUpdateTest extends TestCase
         $response->assertSessionHasErrors('target_date');
     }
 
+    // 過去の日付には更新できない
+    public function test_target_date_cannot_be_in_the_past_on_update(): void
+    {
+        $user = User::factory()->create();
+        $plan = $this->createPlan($user);
+
+        $response = $this->actingAs($user)
+            ->put(route('reading-plans.update', $plan), [
+                'target_date' => now()->subDay()->toDateString(),
+            ]);
+
+        $response->assertSessionHasErrors([
+            'target_date' => '期限は今日以降の日付を選択してください。',
+        ]);
+
+        $this->assertDatabaseHas('reading_plans', [
+            'id' => $plan->id,
+            'target_date' => '2026-11-30',
+            'status' => 'in_progress',
+        ]);
+    }
+
     // 存在しない計画は404
     public function test_nonexistent_plan_returns_404(): void
     {

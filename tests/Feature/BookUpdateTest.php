@@ -188,7 +188,7 @@ class BookUpdateTest extends TestCase
             ]);
 
         $response->assertRedirect(route('books.show', $book))
-            ->assertSessionHas('success', '書籍を更新しました。');
+            ->assertSessionHas('success', '書籍情報を更新しました。');
 
         $this->assertDatabaseHas('book_genre', [
             'book_id' => $book->id,
@@ -198,6 +198,44 @@ class BookUpdateTest extends TestCase
         $this->assertDatabaseMissing('book_genre', [
             'book_id' => $book->id,
             'genre_id' => $oldGenre->id,
+        ]);
+    }
+
+    // 出版日を空欄にして書籍を更新できる
+    public function test_owner_can_update_book_without_published_date(): void
+    {
+        $user = User::factory()->create();
+
+        $book = Book::create([
+            'user_id' => $user->id,
+            'title' => '出版日変更前の書籍',
+            'author' => 'テスト著者',
+            'isbn13' => '9784000003000',
+            'published_at' => '2026-10-21',
+        ]);
+
+        $genre = Genre::create([
+            'name' => '出版日テストジャンル',
+        ]);
+
+        $book->genres()->attach($genre->id);
+
+        $response = $this->actingAs($user)
+            ->put(route('books.update', $book), [
+                'title' => '出版日変更後の書籍',
+                'author' => 'テスト著者',
+                'isbn' => '9784000003000',
+                'published_date' => '',
+                'genres' => [$genre->id],
+            ]);
+
+        $response->assertRedirect(route('books.show', $book))
+            ->assertSessionHas('success', '書籍情報を更新しました。');
+
+        $this->assertDatabaseHas('books', [
+            'id' => $book->id,
+            'title' => '出版日変更後の書籍',
+            'published_at' => null,
         ]);
     }
 }

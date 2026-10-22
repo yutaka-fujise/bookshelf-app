@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Book;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class BookController extends Controller
 {
@@ -176,10 +177,7 @@ class BookController extends Controller
 
     public function destroy(\Illuminate\Http\Request $request, Book $book)
     {
-        abort_unless(
-            $request->user()->id === $book->user_id,
-            403
-        );
+        Gate::authorize('delete', $book);
 
         $book->delete();
 
