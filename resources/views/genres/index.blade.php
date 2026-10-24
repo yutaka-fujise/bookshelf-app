@@ -19,6 +19,12 @@
                 </div>
             @endif
 
+            @if(session('info'))
+                <div class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
+                    {{ session('info') }}
+                </div>
+            @endif
+
             @if(session('error'))
                 <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
                     {{ session('error') }}
@@ -49,7 +55,7 @@
                                         <td class="px-6 py-4 whitespace-nowrap">{{ $genre->books_count }}冊</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm">
                                             <a href="{{ route('genres.edit', $genre) }}" class="text-indigo-600 hover:text-indigo-900 mr-3">編集</a>
-                                            <form action="{{ route('genres.destroy', $genre) }}" method="POST" class="inline" onsubmit="return confirm('本当に削除しますか？');" novalidate>
+                                            <form action="{{ route('genres.destroy', $genre) }}" method="POST" class="inline" onSubmit="return confirm('本当に削除しますか？');" novalidate>
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit" class="text-red-600 hover:text-red-900">削除</button>

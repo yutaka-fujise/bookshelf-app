@@ -15,18 +15,46 @@
                     <x-nav-link :href="route('books.index')" :active="request()->routeIs('books.index')">
                         {{ __('書籍一覧') }}
                     </x-nav-link>
-                    <x-nav-link :href="route('ranking.index')" :active="request()->routeIs('ranking.index')">
-                        {{ __('ランキング') }}
-                    </x-nav-link>
-                    <x-nav-link :href="route('books.create')" :active="request()->routeIs('books.create')">
-                        {{ __('書籍登録') }}
-                    </x-nav-link>
-                    <x-nav-link :href="route('favorites.index')" :active="request()->routeIs('favorites.index')">
-                        {{ __('お気に入り') }}
-                    </x-nav-link>
-                    <x-nav-link :href="route('genres.index')" :active="request()->routeIs('genres.*')">
-                        {{ __('ジャンル管理') }}
-                    </x-nav-link>
+
+                    @if (Route::has('ranking.index'))
+                        <x-nav-link :href="route('ranking.index')" :active="request()->routeIs('ranking.index')">
+                            {{ __('ランキング') }}
+                        </x-nav-link>
+                    @endif
+
+                    @auth
+                        @if (Route::has('reading-plans.index'))
+                            <x-nav-link :href="route('reading-plans.index')"
+                                        :active="request()->routeIs('reading-plans.*')">
+                                {{ __('読書計画') }}
+                            </x-nav-link>
+                        @endif
+
+                        @if (Route::has('notifications.index'))
+                            <x-nav-link :href="route('notifications.index')"
+                                        :active="request()->routeIs('notifications.*')">
+                                {{ __('通知一覧') }}
+                            </x-nav-link>
+                        @endif
+
+                        @if (Route::has('books.create'))
+                            <x-nav-link :href="route('books.create')" :active="request()->routeIs('books.create')">
+                                {{ __('書籍登録') }}
+                            </x-nav-link>
+                        @endif
+
+                        @if (Route::has('favorites.index'))
+                            <x-nav-link :href="route('favorites.index')" :active="request()->routeIs('favorites.index')">
+                                {{ __('お気に入り') }}
+                            </x-nav-link>
+                        @endif
+
+                        @if (Route::has('genres.index'))
+                            <x-nav-link :href="route('genres.index')" :active="request()->routeIs('genres.*')">
+                                {{ __('ジャンル管理') }}
+                            </x-nav-link>
+                        @endif
+                    @endauth
                 </div>
             </div>
 
@@ -48,19 +76,26 @@
 
                         <x-slot name="content">
                             <!-- Authentication -->
-                            <form method="POST" action="{{ route('logout') }}" novalidate>
-                                @csrf
-                                <x-dropdown-link :href="route('logout')"
-                                        onclick="event.preventDefault();
-                                                    this.closest('form').submit();">
-                                    {{ __('ログアウト') }}
-                                </x-dropdown-link>
-                            </form>
+                            @if (Route::has('logout'))
+                                <form method="POST" action="{{ route('logout') }}" novalidate>
+                                    @csrf
+                                    <x-dropdown-link :href="route('logout')"
+                                            onclick="event.preventDefault();
+                                                        this.closest('form').submit();">
+                                        {{ __('ログアウト') }}
+                                    </x-dropdown-link>
+                                </form>
+                            @endif
                         </x-slot>
                     </x-dropdown>
                 @else
-                    <a href="{{ route('login') }}" class="text-sm text-gray-700 underline hover:text-gray-900">ログイン</a>
-                    <a href="{{ route('register') }}" class="ml-4 text-sm text-gray-700 underline hover:text-gray-900">新規登録</a>
+                    @if (Route::has('login'))
+                        <a href="{{ route('login') }}" class="text-sm text-gray-700 underline hover:text-gray-900">ログイン</a>
+                    @endif
+
+                    @if (Route::has('register'))
+                        <a href="{{ route('register') }}" class="ml-4 text-sm text-gray-700 underline hover:text-gray-900">新規登録</a>
+                    @endif
                 @endauth
             </div>
 
@@ -68,7 +103,7 @@
             <div class="-me-2 flex items-center sm:hidden">
                 <button @click="open = ! open" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:bg-gray-100 focus:text-gray-500 transition duration-150 ease-in-out">
                     <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
-                        <path :class="{'hidden': open, 'inline-flex': ! open }" class="inline-flex" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        <path :class="{'hidden': open, 'inline-flex': ! open }" class="inline-flex" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 12h16" />
                         <path :class="{'hidden': ! open, 'inline-flex': open }" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
@@ -77,23 +112,51 @@
     </div>
 
     <!-- Responsive Navigation Menu -->
-    <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
+    <div :class="{'block': open, 'hidden': ! open }" class="hidden sm:hidden">
         <div class="pt-2 pb-3 space-y-1">
             <x-responsive-nav-link :href="route('books.index')" :active="request()->routeIs('books.index')">
                 {{ __('書籍一覧') }}
             </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('ranking.index')" :active="request()->routeIs('ranking.index')">
-                {{ __('ランキング') }}
-            </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('books.create')" :active="request()->routeIs('books.create')">
-                {{ __('書籍登録') }}
-            </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('favorites.index')" :active="request()->routeIs('favorites.index')">
-                {{ __('お気に入り') }}
-            </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('genres.index')" :active="request()->routeIs('genres.*')">
-                {{ __('ジャンル管理') }}
-            </x-responsive-nav-link>
+
+            @if (Route::has('ranking.index'))
+                <x-responsive-nav-link :href="route('ranking.index')" :active="request()->routeIs('ranking.index')">
+                    {{ __('ランキング') }}
+                </x-responsive-nav-link>
+            @endif
+
+            @auth
+                @if (Route::has('reading-plans.index'))
+                    <x-responsive-nav-link :href="route('reading-plans.index')"
+                                            :active="request()->routeIs('reading-plans.*')">
+                        {{ __('読書計画') }}
+                    </x-responsive-nav-link>
+                @endif
+
+                @if (Route::has('notifications.index'))
+                    <x-responsive-nav-link :href="route('notifications.index')"
+                                            :active="request()->routeIs('notifications.*')">
+                        {{ __('通知一覧') }}
+                    </x-responsive-nav-link>
+                @endif
+
+                @if (Route::has('books.create'))
+                    <x-responsive-nav-link :href="route('books.create')" :active="request()->routeIs('books.create')">
+                        {{ __('書籍登録') }}
+                    </x-responsive-nav-link>
+                @endif
+
+                @if (Route::has('favorites.index'))
+                    <x-responsive-nav-link :href="route('favorites.index')" :active="request()->routeIs('favorites.index')">
+                        {{ __('お気に入り') }}
+                    </x-responsive-nav-link>
+                @endif
+
+                @if (Route::has('genres.index'))
+                    <x-responsive-nav-link :href="route('genres.index')" :active="request()->routeIs('genres.*')">
+                        {{ __('ジャンル管理') }}
+                    </x-responsive-nav-link>
+                @endif
+            @endauth
         </div>
 
         <!-- Responsive Settings Options -->
@@ -106,23 +169,30 @@
 
                 <div class="mt-3 space-y-1">
                     <!-- Authentication -->
-                    <form method="POST" action="{{ route('logout') }}" novalidate>
-                        @csrf
-                        <x-responsive-nav-link :href="route('logout')"
-                                onclick="event.preventDefault();
-                                            this.closest('form').submit();">
-                            {{ __('ログアウト') }}
-                        </x-responsive-nav-link>
-                    </form>
+                    @if (Route::has('logout'))
+                        <form method="POST" action="{{ route('logout') }}" novalidate>
+                            @csrf
+                            <x-responsive-nav-link :href="route('logout')"
+                                    onclick="event.preventDefault();
+                                                this.closest('form').submit();">
+                                {{ __('ログアウト') }}
+                            </x-responsive-nav-link>
+                        </form>
+                    @endif
                 </div>
             @else
                 <div class="mt-3 space-y-1">
-                    <x-responsive-nav-link :href="route('login')">
-                        {{ __('ログイン') }}
-                    </x-responsive-nav-link>
-                    <x-responsive-nav-link :href="route('register')">
-                        {{ __('新規登録') }}
-                    </x-responsive-nav-link>
+                    @if (Route::has('login'))
+                        <x-responsive-nav-link :href="route('login')">
+                            {{ __('ログイン') }}
+                        </x-responsive-nav-link>
+                    @endif
+
+                    @if (Route::has('register'))
+                        <x-responsive-nav-link :href="route('register')">
+                            {{ __('新規登録') }}
+                        </x-responsive-nav-link>
+                    @endif
                 </div>
             @endauth
         </div>
