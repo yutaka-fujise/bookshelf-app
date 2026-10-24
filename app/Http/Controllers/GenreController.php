@@ -70,7 +70,7 @@ class GenreController extends Controller
         // 変更がない場合はDBを更新しない
         if ($genre->name === $validated['name']) {
             return redirect()
-                ->route('genres.show', $genre)
+                ->route('genres.index')
                 ->with('info', '変更内容がありません。');
         }
 
@@ -78,7 +78,7 @@ class GenreController extends Controller
         $genre->update($validated);
 
         return redirect()
-            ->route('genres.show', $genre)
+            ->route('genres.index')
             ->with('success', 'ジャンルを更新しました。');
     }
 

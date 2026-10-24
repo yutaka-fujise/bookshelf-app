@@ -15,13 +15,11 @@ class ReviewEditTest extends TestCase
     public function test_owner_can_view_review_edit_form(): void
     {
         $owner = User::factory()->create();
-
         $book = Book::create([
             'title' => 'レビュー編集テスト書籍',
             'author' => 'テスト著者',
             'isbn13' => '9784000000040',
         ]);
-
         $review = $book->reviews()->create([
             'user_id' => $owner->id,
             'rating' => 4,
@@ -40,9 +38,9 @@ class ReviewEditTest extends TestCase
         $response->assertSee(route('reviews.update', $review), false);
 
         // 既存の評価（4）が選択されていることを確認
-        $response->assertSee(
-            'name="rating" value="4" class="sr-only peer" checked',
-            false
+        $this->assertMatchesRegularExpression(
+            '/<input\b(?=[^>]*name="rating")(?=[^>]*value="4")(?=[^>]*\bchecked\b)[^>]*>/s',
+            $response->getContent()
         );
     }
 
@@ -57,7 +55,6 @@ class ReviewEditTest extends TestCase
             'author' => 'テスト著者',
             'isbn13' => '9784000000041',
         ]);
-
         $review = $book->reviews()->create([
             'user_id' => $owner->id,
             'rating' => 5,
@@ -80,7 +77,6 @@ class ReviewEditTest extends TestCase
             'author' => 'テスト著者',
             'isbn13' => '9784000000042',
         ]);
-
         $review = $book->reviews()->create([
             'user_id' => $owner->id,
             'rating' => 3,

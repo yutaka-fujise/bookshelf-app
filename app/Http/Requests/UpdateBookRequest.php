@@ -33,7 +33,7 @@ class UpdateBookRequest extends FormRequest
                 $this->is('api/v1/books/*') ? 'required' : 'nullable',
                 'date',
             ],
-            'description' => ['nullable', 'string', 'max:1000'],
+            'description' => ['nullable', 'string', 'max:5000'],
             'image_url' => ['nullable', 'url', 'max:255'],
             'genres' => ['required', 'array', 'min:1'],
             'genres.*' => ['integer', 'distinct', Rule::exists('genres', 'id')],
