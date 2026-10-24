@@ -36,7 +36,8 @@ class GenreUpdateTest extends TestCase
                 'name' => '文学',
             ]);
 
-        $response->assertRedirect(route('genres.show', $genre));
+        $response->assertRedirect(route('genres.index'));
+        $response->assertSessionHas('success', 'ジャンルを更新しました。');
 
         $this->assertDatabaseHas('genres', [
             'id' => $genre->id,
@@ -96,7 +97,7 @@ class GenreUpdateTest extends TestCase
                 'name' => '小説',
             ]);
 
-        $response->assertRedirect(route('genres.show', $genre));
+        $response->assertRedirect(route('genres.index'));
         $response->assertSessionHas('info', '変更内容がありません。');
 
         $this->assertDatabaseHas('genres', [
