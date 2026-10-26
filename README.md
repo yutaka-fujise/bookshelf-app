@@ -15,35 +15,36 @@ Bookshelfは、書籍の登録・検索・レビュー投稿に加え、読書�
 - MySQL 8.4
 - Node.js / npm
 
-Windows環境ではWSL2の利用を想定しています。
+Windows環境ではWSL2の利用を想定しています。以下のコマンドはWSL2のターミナルから実行してください。環境構築を始める前にDocker Desktopを起動してください。
+
+本手順は、新しくクローンし、未初期化のMySQLデータベースを使用する場合を想定しています。
 
 ### 1. リポジトリをクローン
 
 ```bash
-git clone git@github.com:yutaka-fujise/bookshelf-app.git
-```
-
-```bash
+git clone https://github.com/yutaka-fujise/bookshelf-app.git
 cd bookshelf-app
 ```
 
-Docker Desktopを起動してください。
+HTTPS形式のためGitHubのSSHキー設定は不要です。以降、特に指定がない限り `bookshelf-app` ディレクトリ内で実行します。
 
 ### 2. Composerの依存パッケージをインストール
 
 Laravel SailのDockerfileは `vendor` ディレクトリ内にあるため、初回起動前にComposerの依存パッケージをインストールします。
 
-ホスト環境にPHPとComposerがインストールされている場合：
+ホスト環境にPHPとComposerがある場合：
 
 ```bash
 composer install
 ```
 
-ホスト環境にPHPやComposerがない場合は、DockerのComposerイメージからインストールできます。
+ホスト環境にPHPやComposerがない場合：
 
 ```bash
 docker run --rm -u "$(id -u):$(id -g)" -v "$(pwd):/app" -w /app composer:2 install --ignore-platform-reqs
 ```
+
+後者はDocker上のComposerを利用します。`--ignore-platform-reqs` はインストール時のPHPバージョンや拡張機能の要件チェックを省略するオプションです。アプリケーションは後続のLaravel Sail環境で実行します。
 
 ### 3. .envファイルを作成
 
@@ -51,7 +52,7 @@ docker run --rm -u "$(id -u):$(id -g)" -v "$(pwd):/app" -w /app composer:2 insta
 cp .env.example .env
 ```
 
-`.env` に以下の設定が含まれていることを確認してください。
+`.env` に以下の設定が含まれることを確認し、必要に応じて編集してください。
 
 ```dotenv
 APP_NAME=Bookshelf
@@ -67,9 +68,9 @@ DB_PASSWORD=password
 GOOGLE_BOOKS_API_KEY=
 ```
 
-Google Books APIを利用する場合は、`GOOGLE_BOOKS_API_KEY` に自身で取得したAPIキーを設定してください。
+**データベース名・ユーザー名・パスワードはMySQLコンテナの初回起動前に設定してください。** MySQLの初回起動時にこれらの設定に基づいてデータベースとユーザーが初期化されます。
 
-APIキーはGitHubに公開しないでください。
+Google Books APIを利用する場合は、`GOOGLE_BOOKS_API_KEY` に自身で取得したAPIキーを設定してください。APIキーはGitHubに公開しないでください。
 
 ### 4. Dockerコンテナをビルド・起動
 
@@ -77,17 +78,21 @@ APIキーはGitHubに公開しないでください。
 ./vendor/bin/sail up -d --build
 ```
 
-初回起動時はDockerイメージのビルドが行われます。
+初回起動時はDockerイメージのビルドとMySQLの初期化が行われます。次のコマンドで状態を確認します。
 
-**既存のDocker環境を再利用する場合の注意事項**
+```bash
+./vendor/bin/sail ps
+```
 
-以前に同じプロジェクト名でDocker環境を起動していた場合、MySQLの永続ボリュームが再利用されることがあります。
+**MySQLコンテナのSTATUSが `healthy` になってから次の手順に進んでください。** `Up ... (health: starting)` の場合は、少し時間をおいて再確認してください。初期化が終わる前にマイグレーションすると、`SQLSTATE[HY000] [2002] Connection refused` が発生する場合があります。
 
-その場合、現在の `.env` と既存データベースのユーザー名・パスワード・アクセス権限が一致せず、マイグレーション時に接続エラーが発生する可能性があります。
+**既存のDocker環境を再利用する場合の注意：** 同じプロジェクト名で以前に作成したMySQL永続ボリュームが再利用される場合があります。リポジトリの再クローンやフォルダ削除ではDockerボリュームは削除されません。既存のDB設定と `.env` が一致しない場合は接続・権限エラーが発生することがあります。まず次のコマンドで確認してください。
 
-新規構築時にデータベースへの接続エラーが発生した場合は、既存のDockerボリュームや `.env` の設定を確認してください。
+```bash
+docker volume ls
+```
 
-なお、既存ボリュームの削除は保存済みデータの消失につながるため、必要なデータがある場合は削除しないでください。
+通常のプロジェクト名ではMySQLボリューム名は `bookshelf-app_sail-mysql` です。**ボリューム削除は保存済みDBデータを消去します。通常の環境構築では削除しないでください。** データを破棄して初期化する場合の手順は後述します。
 
 ### 5. アプリケーションキーを生成
 
@@ -97,11 +102,19 @@ APIキーはGitHubに公開しないでください。
 
 ### 6. マイグレーション・シーディングを実行
 
+**MySQLが `healthy` であることを確認してから、未初期化のDBに対して初回のみ実行してください。**
+
 ```bash
 ./vendor/bin/sail artisan migrate --seed
 ```
 
-初期データとして、ユーザー・ジャンル・書籍・レビュー・お気に入り・レビューへのいいね・読書計画が登録されます。
+ユーザー・ジャンル・書籍・レビュー・お気に入り・レビューへのいいね・読書計画などの初期データが登録されます。
+
+**注意：** すでにシーディング済みのDBに `migrate --seed` を繰り返すと、レビューなどのUNIQUE制約によって `1062 Duplicate entry` が発生する場合があります。通常の再起動ではシーディングを再実行しないでください。既存データを保持したまま追加のマイグレーションだけを適用する場合：
+
+```bash
+./vendor/bin/sail artisan migrate
+```
 
 ### 7. Node.jsパッケージをインストール
 
@@ -109,13 +122,17 @@ APIキーはGitHubに公開しないでください。
 ./vendor/bin/sail npm install
 ```
 
+依存パッケージに関する脆弱性警告が表示される場合があります。警告の内容とインストールの成否を区別し、コマンドが正常終了したことを確認してください。
+
 ### 8. フロントエンドのビルド
 
 ```bash
 ./vendor/bin/sail npm run build
 ```
 
-開発中にViteの開発サーバーを利用する場合：
+画面表示に必要なCSS・JavaScriptが生成されます。ビルド前にアクセスすると `Vite manifest not found` と表示される場合があります。
+
+開発中にVite開発サーバーを利用する場合：
 
 ```bash
 ./vendor/bin/sail npm run dev
@@ -123,9 +140,101 @@ APIキーはGitHubに公開しないでください。
 
 ### 9. アプリケーションにアクセス
 
-ブラウザで以下にアクセスしてください。
+ブラウザで [http://localhost](http://localhost) にアクセスしてください。書籍一覧画面に初期データの書籍が表示されれば、基本的な環境構築は完了です。ログインには後述のサンプルアカウントを利用できます。
 
-http://localhost
+### 10. 2回目以降の起動
+
+通常の起動：
+
+```bash
+./vendor/bin/sail up -d
+```
+
+停止：
+
+```bash
+./vendor/bin/sail down
+```
+
+通常、`sail down` ではMySQLの永続ボリュームは削除されません。起動・停止のたびにマイグレーションやシーディングを再実行する必要はありません。
+
+### トラブルシューティング
+
+#### MySQLへの接続が拒否される（2002）
+
+`SQLSTATE[HY000] [2002] Connection refused` の場合、MySQLコンテナがまだ準備中の可能性があります。
+
+```bash
+./vendor/bin/sail ps
+```
+
+MySQLが `healthy` になってから再試行してください。解消しない場合はログを確認します。
+
+```bash
+./vendor/bin/sail logs mysql
+```
+
+#### データベースへのアクセス権限エラー（1044）
+
+`SQLSTATE[HY000] [1044] Access denied for user 'sail'@'%' to database 'bookshelf'` の場合、`.env` とMySQL内のDB名・ユーザー権限が不一致の可能性があります。`DB_DATABASE`、`DB_USERNAME`、`DB_PASSWORD` と既存ボリュームを確認してください。
+
+```bash
+docker volume ls
+```
+
+既存データが必要ならボリュームを削除せず、DBと権限設定を確認してください。
+
+#### 既存MySQLデータを破棄して初期化し直す場合
+
+**注意：以下の操作は対象DB内の保存済みデータをすべて削除します。バックアップがない場合、復元できません。不要な検証用DBであることを確認した場合のみ実行してください。**
+
+```bash
+./vendor/bin/sail down
+docker volume ls
+```
+
+対象が `bookshelf-app_sail-mysql` であることを確認し、そのデータを破棄してよい場合だけ次を実行します。
+
+```bash
+docker volume rm bookshelf-app_sail-mysql
+docker volume ls
+```
+
+`.env` のDB設定を確認したあと、コンテナを起動します。
+
+```bash
+./vendor/bin/sail up -d --build
+./vendor/bin/sail ps
+```
+
+MySQLが `healthy` になったら、**新しいDBに対して一度だけ**実行します。
+
+```bash
+./vendor/bin/sail artisan migrate --seed
+```
+
+#### シーディングで重複エラー（1062）
+
+`SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry` は既存データの重複登録による可能性があります。`INFO Nothing to migrate.` はマイグレーション完了済みを表しますが、シーディング完了の保証ではありません。
+
+マイグレーションの状態は次のコマンドで確認できます。
+
+```bash
+./vendor/bin/sail artisan migrate:status
+```
+
+既存データがありアプリケーションが正常に動くなら、シーディングを繰り返す必要はありません。
+
+#### Viteのmanifestエラー
+
+`Vite manifest not found` が表示される場合は、フロントエンドをビルドしてください。
+
+```bash
+./vendor/bin/sail npm install
+./vendor/bin/sail npm run build
+```
+
+完了後、ブラウザを再読み込みしてください。
 
 ## 使用技術（実行環境）
 
@@ -181,8 +290,7 @@ http://localhost
 - 取得した情報を登録フォームに反映
 - 取得できなかった項目は手動で入力可能
 
-**注意事項：**
-ISBN検索後、著者名が自動入力されず、著者が不明な場合は、著者欄に「不明」と入力して登録してください。
+**注意事項：** ISBN検索後、著者名が自動入力されず、著者が不明な場合は、著者欄に「不明」と入力して登録してください。
 
 ### ジャンル管理
 
@@ -389,13 +497,13 @@ Laravel標準の `password_reset_tokens`・`failed_jobs` テーブルも使用�
 
 | 項目 | URL |
 |---|---|
-| アプリケーション | http://localhost |
-| 書籍一覧 | http://localhost/books |
-| 書籍ランキング | http://localhost/ranking |
-| ログイン | http://localhost/login |
-| ユーザー登録 | http://localhost/register |
-| phpMyAdmin | http://localhost:8080 |
-| 書籍API | http://localhost/api/v1/books |
+| アプリケーション | [http://localhost](http://localhost) |
+| 書籍一覧 | [http://localhost/books](http://localhost/books) |
+| 書籍ランキング | [http://localhost/ranking](http://localhost/ranking) |
+| ログイン | [http://localhost/login](http://localhost/login) |
+| ユーザー登録 | [http://localhost/register](http://localhost/register) |
+| phpMyAdmin | [http://localhost:8080](http://localhost:8080) |
+| 書籍API | [http://localhost/api/v1/books](http://localhost/api/v1/books) |
 
 上記URLはデフォルトのポート設定を使用した場合のものです。
 
